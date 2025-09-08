@@ -217,7 +217,7 @@ export default function ManageGroupModal({ open, onOpenChange, group }: ManageGr
 
   const deleteMeetingMutation = useMutation({
     mutationFn: async (meetingId: string) => {
-      return apiRequest(`/api/meetings/${meetingId}`, "DELETE");
+      return apiRequest("DELETE", `/api/meetings/${meetingId}`);
     },
     onSuccess: () => {
       toast({

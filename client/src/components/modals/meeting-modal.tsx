@@ -18,7 +18,7 @@ const meetingSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().optional(),
   topic: z.string().optional(),
-  meetingDate: z.string().min(1, "Meeting date is required"),
+  meetingDate: z.string().optional(),
   venue: z.string().optional(),
   venueAddress: z.string().optional(),
   latitude: z.string().optional(),
@@ -28,6 +28,16 @@ const meetingSchema = z.object({
   recurringPattern: z.string().optional(),
   recurringDayOfWeek: z.string().optional(),
   recurringTime: z.string().optional(),
+}).refine((data) => {
+  // If not recurring, meetingDate is required
+  if (!data.isRecurring) {
+    return data.meetingDate && data.meetingDate.length > 0;
+  }
+  // If recurring, recurringDayOfWeek and recurringTime are required
+  return data.recurringDayOfWeek && data.recurringTime;
+}, {
+  message: "Meeting date is required for regular meetings, or day/time for recurring meetings",
+  path: ["meetingDate"]
 });
 
 type MeetingFormData = z.infer<typeof meetingSchema>;
