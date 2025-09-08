@@ -5,7 +5,13 @@ export default function Landing() {
     <div className="min-h-screen gradient-bg flex flex-col items-center justify-center text-center px-6">
       <div className="glass-effect rounded-3xl p-8 max-w-sm w-full">
         <div className="mb-8">
-          <i className="fas fa-praying-hands text-6xl text-white mb-4 block"></i>
+          <div className="w-24 h-24 mx-auto mb-6 rounded-lg overflow-hidden bg-black/20">
+            <img 
+              src="/pray-connect-logo.png" 
+              alt="Pray Connect Logo" 
+              className="w-full h-full object-contain"
+            />
+          </div>
           <h1 className="text-3xl font-bold text-white mb-2">Pray Connect</h1>
           <p className="text-white/80 text-lg">Unite in faith, pray in community</p>
         </div>

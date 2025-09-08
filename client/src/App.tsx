@@ -39,8 +39,12 @@ function MainApp() {
       {/* Header */}
       <header className="bg-card shadow-sm px-6 py-4 flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
-            <i className="fas fa-praying-hands text-white text-sm"></i>
+          <div className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center bg-black">
+            <img 
+              src="/pray-connect-logo.png" 
+              alt="Pray Connect Logo" 
+              className="w-full h-full object-contain"
+            />
           </div>
           <div>
             <h1 className="font-semibold text-foreground">Pray Connect</h1>
