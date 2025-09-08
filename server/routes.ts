@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { insertGroupSchema, insertPrayerRequestSchema, insertGroupMembershipSchema, insertChatMessageSchema } from "@shared/schema";
+import { insertGroupSchema, insertPrayerRequestSchema, insertGroupMembershipSchema, insertChatMessageSchema, insertMeetingSchema, insertMeetingRsvpSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -286,6 +286,113 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating message:", error);
       res.status(500).json({ message: "Failed to create message" });
+    }
+  });
+
+  // Meeting routes
+  app.post('/api/groups/:id/meetings', isAuthenticated, async (req: any, res) => {
+    try {
+      const meetingData = insertMeetingSchema.parse({
+        ...req.body,
+        groupId: req.params.id
+      });
+      
+      const meeting = await storage.createMeeting(meetingData);
+      res.status(201).json(meeting);
+    } catch (error) {
+      console.error("Error creating meeting:", error);
+      res.status(500).json({ message: "Failed to create meeting" });
+    }
+  });
+
+  app.get('/api/groups/:id/meetings', isAuthenticated, async (req: any, res) => {
+    try {
+      const meetings = await storage.getGroupMeetings(req.params.id);
+      res.json(meetings);
+    } catch (error) {
+      console.error("Error fetching meetings:", error);
+      res.status(500).json({ message: "Failed to fetch meetings" });
+    }
+  });
+
+  app.get('/api/groups/:id/meetings/upcoming', isAuthenticated, async (req: any, res) => {
+    try {
+      const meetings = await storage.getUpcomingMeetings(req.params.id);
+      res.json(meetings);
+    } catch (error) {
+      console.error("Error fetching upcoming meetings:", error);
+      res.status(500).json({ message: "Failed to fetch upcoming meetings" });
+    }
+  });
+
+  app.put('/api/meetings/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const meetingData = insertMeetingSchema.partial().parse(req.body);
+      const meeting = await storage.updateMeeting(req.params.id, meetingData);
+      res.json(meeting);
+    } catch (error) {
+      console.error("Error updating meeting:", error);
+      res.status(500).json({ message: "Failed to update meeting" });
+    }
+  });
+
+  app.delete('/api/meetings/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      await storage.deleteMeeting(req.params.id);
+      res.json({ message: "Meeting deleted" });
+    } catch (error) {
+      console.error("Error deleting meeting:", error);
+      res.status(500).json({ message: "Failed to delete meeting" });
+    }
+  });
+
+  // RSVP routes
+  app.post('/api/meetings/:id/rsvp', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const rsvpData = insertMeetingRsvpSchema.parse({
+        ...req.body,
+        meetingId: req.params.id,
+        userId
+      });
+      
+      const rsvp = await storage.createOrUpdateRsvp(rsvpData);
+      res.status(201).json(rsvp);
+    } catch (error) {
+      console.error("Error creating/updating RSVP:", error);
+      res.status(500).json({ message: "Failed to create/update RSVP" });
+    }
+  });
+
+  app.get('/api/meetings/:id/rsvps', isAuthenticated, async (req: any, res) => {
+    try {
+      const rsvps = await storage.getMeetingRsvps(req.params.id);
+      res.json(rsvps);
+    } catch (error) {
+      console.error("Error fetching RSVPs:", error);
+      res.status(500).json({ message: "Failed to fetch RSVPs" });
+    }
+  });
+
+  app.get('/api/meetings/:id/rsvp/my', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const rsvp = await storage.getUserRsvp(req.params.id, userId);
+      res.json(rsvp || null);
+    } catch (error) {
+      console.error("Error fetching user RSVP:", error);
+      res.status(500).json({ message: "Failed to fetch user RSVP" });
+    }
+  });
+
+  app.delete('/api/meetings/:id/rsvp', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      await storage.deleteRsvp(req.params.id, userId);
+      res.json({ message: "RSVP deleted" });
+    } catch (error) {
+      console.error("Error deleting RSVP:", error);
+      res.status(500).json({ message: "Failed to delete RSVP" });
     }
   });
 

@@ -5,6 +5,8 @@ import {
   prayerRequests,
   prayerResponses,
   chatMessages,
+  meetings,
+  meetingRsvps,
   type User,
   type UpsertUser,
   type Group,
@@ -12,10 +14,14 @@ import {
   type PrayerRequest,
   type PrayerResponse,
   type ChatMessage,
+  type Meeting,
+  type MeetingRsvp,
   type InsertGroup,
   type InsertPrayerRequest,
   type InsertGroupMembership,
   type InsertChatMessage,
+  type InsertMeeting,
+  type InsertMeetingRsvp,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, desc, asc, sql, count, isNull } from "drizzle-orm";
@@ -52,6 +58,20 @@ export interface IStorage {
   // Chat operations
   createChatMessage(message: InsertChatMessage): Promise<ChatMessage>;
   getGroupChatMessages(groupId: string, limit?: number): Promise<(ChatMessage & { user: User })[]>;
+  
+  // Meeting operations
+  createMeeting(meeting: InsertMeeting): Promise<Meeting>;
+  updateMeeting(id: string, meeting: Partial<InsertMeeting>): Promise<Meeting>;
+  getMeeting(id: string): Promise<Meeting | undefined>;
+  getGroupMeetings(groupId: string): Promise<Meeting[]>;
+  getUpcomingMeetings(groupId: string): Promise<Meeting[]>;
+  deleteMeeting(id: string): Promise<void>;
+  
+  // RSVP operations
+  createOrUpdateRsvp(rsvp: InsertMeetingRsvp): Promise<MeetingRsvp>;
+  getMeetingRsvps(meetingId: string): Promise<(MeetingRsvp & { user: User })[]>;
+  getUserRsvp(meetingId: string, userId: string): Promise<MeetingRsvp | undefined>;
+  deleteRsvp(meetingId: string, userId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -362,6 +382,117 @@ export class DatabaseStorage implements IStorage {
       ...result.chat_messages,
       user: result.users
     })).reverse(); // Reverse to show oldest first
+  }
+
+  // Meeting operations
+  async createMeeting(meeting: InsertMeeting): Promise<Meeting> {
+    const [newMeeting] = await db
+      .insert(meetings)
+      .values(meeting)
+      .returning();
+    return newMeeting;
+  }
+
+  async updateMeeting(id: string, meetingData: Partial<InsertMeeting>): Promise<Meeting> {
+    const [updatedMeeting] = await db
+      .update(meetings)
+      .set({
+        ...meetingData,
+        updatedAt: new Date(),
+      })
+      .where(eq(meetings.id, id))
+      .returning();
+    return updatedMeeting;
+  }
+
+  async getMeeting(id: string): Promise<Meeting | undefined> {
+    const [meeting] = await db
+      .select()
+      .from(meetings)
+      .where(eq(meetings.id, id));
+    return meeting;
+  }
+
+  async getGroupMeetings(groupId: string): Promise<Meeting[]> {
+    return await db
+      .select()
+      .from(meetings)
+      .where(eq(meetings.groupId, groupId))
+      .orderBy(asc(meetings.meetingDate));
+  }
+
+  async getUpcomingMeetings(groupId: string): Promise<Meeting[]> {
+    const now = new Date();
+    return await db
+      .select()
+      .from(meetings)
+      .where(
+        and(
+          eq(meetings.groupId, groupId),
+          sql`${meetings.meetingDate} >= ${now}`,
+          eq(meetings.status, "scheduled")
+        )
+      )
+      .orderBy(asc(meetings.meetingDate));
+  }
+
+  async deleteMeeting(id: string): Promise<void> {
+    await db.delete(meetings).where(eq(meetings.id, id));
+  }
+
+  // RSVP operations
+  async createOrUpdateRsvp(rsvp: InsertMeetingRsvp): Promise<MeetingRsvp> {
+    const [newRsvp] = await db
+      .insert(meetingRsvps)
+      .values(rsvp)
+      .onConflictDoUpdate({
+        target: [meetingRsvps.meetingId, meetingRsvps.userId],
+        set: {
+          status: rsvp.status,
+          notes: rsvp.notes,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return newRsvp;
+  }
+
+  async getMeetingRsvps(meetingId: string): Promise<(MeetingRsvp & { user: User })[]> {
+    const rsvps = await db
+      .select()
+      .from(meetingRsvps)
+      .innerJoin(users, eq(meetingRsvps.userId, users.id))
+      .where(eq(meetingRsvps.meetingId, meetingId))
+      .orderBy(asc(users.firstName));
+
+    return rsvps.map(result => ({
+      ...result.meeting_rsvps,
+      user: result.users
+    }));
+  }
+
+  async getUserRsvp(meetingId: string, userId: string): Promise<MeetingRsvp | undefined> {
+    const [rsvp] = await db
+      .select()
+      .from(meetingRsvps)
+      .where(
+        and(
+          eq(meetingRsvps.meetingId, meetingId),
+          eq(meetingRsvps.userId, userId)
+        )
+      );
+    return rsvp;
+  }
+
+  async deleteRsvp(meetingId: string, userId: string): Promise<void> {
+    await db
+      .delete(meetingRsvps)
+      .where(
+        and(
+          eq(meetingRsvps.meetingId, meetingId),
+          eq(meetingRsvps.userId, userId)
+        )
+      );
   }
 }
 
