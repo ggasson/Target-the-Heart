@@ -463,6 +463,7 @@ export class DatabaseStorage implements IStorage {
         set: {
           status: rsvp.status,
           notes: rsvp.notes,
+          guestCount: rsvp.guestCount,
           updatedAt: new Date(),
         },
       })
@@ -615,11 +616,14 @@ export class DatabaseStorage implements IStorage {
         )
       );
 
-    // Count RSVPs by status
+    // Count RSVPs by status including guests
+    const attendingRsvps = rsvps.filter(r => r.status === "attending");
+    const maybeRsvps = rsvps.filter(r => r.status === "maybe");
+    
     const rsvpCounts = {
-      attending: rsvps.filter(r => r.status === "attending").length,
+      attending: attendingRsvps.reduce((total, rsvp) => total + 1 + parseInt(rsvp.guestCount || '0'), 0),
       notAttending: rsvps.filter(r => r.status === "not_attending").length,
-      maybe: rsvps.filter(r => r.status === "maybe").length,
+      maybe: maybeRsvps.reduce((total, rsvp) => total + 1 + parseInt(rsvp.guestCount || '0'), 0),
       notResponded: groupMembers.length - rsvps.length
     };
 

@@ -1,13 +1,142 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import PrayerModal from "@/components/modals/prayer-modal";
 import { useAuth } from "@/hooks/useAuth";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import type { Group, PrayerRequest } from "@shared/schema";
 
 interface HomeProps {
   onTabChange?: (tab: string) => void;
+}
+
+interface QuickRSVPProps {
+  meetingId: string;
+  currentRsvp?: any;
+}
+
+function QuickRSVP({ meetingId, currentRsvp }: QuickRSVPProps) {
+  const [selectedStatus, setSelectedStatus] = useState(currentRsvp?.status || '');
+  const [guestCount, setGuestCount] = useState(currentRsvp?.guestCount || '0');
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const rsvpMutation = useMutation({
+    mutationFn: async (data: { status: string; guestCount: string }) => {
+      return apiRequest(`/api/meetings/${meetingId}/rsvp`, {
+        method: 'POST',
+        body: JSON.stringify({
+          status: data.status,
+          guestCount: data.guestCount,
+        }),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/meetings/next"] });
+      toast({
+        title: "RSVP Updated",
+        description: "Your response has been saved successfully.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update RSVP. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleRSVP = (status: string) => {
+    setSelectedStatus(status);
+    rsvpMutation.mutate({ status, guestCount });
+  };
+
+  const handleGuestCountChange = (count: string) => {
+    setGuestCount(count);
+    if (selectedStatus) {
+      rsvpMutation.mutate({ status: selectedStatus, guestCount: count });
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="text-sm font-medium text-white/90">Quick RSVP:</div>
+      
+      {/* RSVP Status Buttons */}
+      <div className="flex space-x-2">
+        <Button
+          variant={selectedStatus === 'attending' ? 'default' : 'outline'}
+          size="sm"
+          className={`text-xs ${selectedStatus === 'attending' ? 'bg-green-500 hover:bg-green-600' : 'bg-white/20 hover:bg-white/30 text-white border-white/30'}`}
+          onClick={() => handleRSVP('attending')}
+          disabled={rsvpMutation.isPending}
+          data-testid="button-rsvp-attending"
+        >
+          <i className="fas fa-check-circle mr-1"></i>
+          Attending
+        </Button>
+        
+        <Button
+          variant={selectedStatus === 'maybe' ? 'default' : 'outline'}
+          size="sm"
+          className={`text-xs ${selectedStatus === 'maybe' ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-white/20 hover:bg-white/30 text-white border-white/30'}`}
+          onClick={() => handleRSVP('maybe')}
+          disabled={rsvpMutation.isPending}
+          data-testid="button-rsvp-maybe"
+        >
+          <i className="fas fa-question-circle mr-1"></i>
+          Maybe
+        </Button>
+        
+        <Button
+          variant={selectedStatus === 'not_attending' ? 'default' : 'outline'}
+          size="sm"
+          className={`text-xs ${selectedStatus === 'not_attending' ? 'bg-red-500 hover:bg-red-600' : 'bg-white/20 hover:bg-white/30 text-white border-white/30'}`}
+          onClick={() => handleRSVP('not_attending')}
+          disabled={rsvpMutation.isPending}
+          data-testid="button-rsvp-not-attending"
+        >
+          <i className="fas fa-times-circle mr-1"></i>
+          Not Attending
+        </Button>
+      </div>
+
+      {/* Guest Count Section */}
+      {(selectedStatus === 'attending' || selectedStatus === 'maybe') && (
+        <div className="flex items-center space-x-3">
+          <span className="text-sm text-white/90">Bringing guests:</span>
+          <div className="flex items-center space-x-1">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 w-8 p-0 bg-white/20 hover:bg-white/30 text-white border-white/30"
+              onClick={() => handleGuestCountChange(Math.max(0, parseInt(guestCount) - 1).toString())}
+              disabled={parseInt(guestCount) <= 0 || rsvpMutation.isPending}
+              data-testid="button-guest-decrease"
+            >
+              -
+            </Button>
+            <span className="text-sm min-w-[2rem] text-center text-white" data-testid="text-guest-count">
+              {guestCount}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 w-8 p-0 bg-white/20 hover:bg-white/30 text-white border-white/30"
+              onClick={() => handleGuestCountChange((parseInt(guestCount) + 1).toString())}
+              disabled={parseInt(guestCount) >= 10 || rsvpMutation.isPending}
+              data-testid="button-guest-increase"
+            >
+              +
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function Home({ onTabChange }: HomeProps) {
@@ -126,9 +255,12 @@ export default function Home({ onTabChange }: HomeProps) {
             </div>
           </div>
 
+          {/* Quick RSVP Section */}
+          <QuickRSVP meetingId={nextMeeting.id} currentRsvp={nextMeeting.userRsvp} />
+
           <Button 
             variant="secondary" 
-            className="bg-white/20 hover:bg-white/30 text-white border-0"
+            className="bg-white/20 hover:bg-white/30 text-white border-0 mt-3"
             onClick={() => window.location.href = `/meeting/${nextMeeting.id}`}
             data-testid="button-view-meeting-details"
           >

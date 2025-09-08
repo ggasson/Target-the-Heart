@@ -192,6 +192,7 @@ export const meetingRsvps = pgTable("meeting_rsvps", {
   userId: varchar("user_id").references(() => users.id).notNull(),
   status: rsvpStatusEnum("status").notNull(),
   notes: text("notes"),
+  guestCount: varchar("guest_count").default("0"), // Number of additional people they're bringing
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
