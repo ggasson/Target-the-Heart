@@ -196,6 +196,19 @@ export const meetingRsvps = pgTable("meeting_rsvps", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Group invitations
+export const groupInvitations = pgTable("group_invitations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  groupId: varchar("group_id").references(() => groups.id).notNull(),
+  token: varchar("token").unique().notNull(),
+  createdById: varchar("created_by_id").references(() => users.id).notNull(),
+  maxUses: varchar("max_uses").default("unlimited"), // "unlimited" or a number
+  currentUses: varchar("current_uses").default("0"),
+  expiresAt: timestamp("expires_at"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   adminGroups: many(groups),
@@ -204,6 +217,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   prayerResponses: many(prayerResponses),
   chatMessages: many(chatMessages),
   meetingRsvps: many(meetingRsvps),
+  createdInvitations: many(groupInvitations),
 }));
 
 export const groupsRelations = relations(groups, ({ one, many }) => ({
@@ -215,6 +229,7 @@ export const groupsRelations = relations(groups, ({ one, many }) => ({
   prayerRequests: many(prayerRequests),
   chatMessages: many(chatMessages),
   meetings: many(meetings),
+  invitations: many(groupInvitations),
 }));
 
 export const groupMembershipsRelations = relations(groupMemberships, ({ one }) => ({
@@ -286,6 +301,17 @@ export const meetingRsvpsRelations = relations(meetingRsvps, ({ one }) => ({
   }),
 }));
 
+export const groupInvitationsRelations = relations(groupInvitations, ({ one }) => ({
+  group: one(groups, {
+    fields: [groupInvitations.groupId],
+    references: [groups.id],
+  }),
+  createdBy: one(users, {
+    fields: [groupInvitations.createdById],
+    references: [users.id],
+  }),
+}));
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -328,6 +354,11 @@ export const insertMeetingRsvpSchema = createInsertSchema(meetingRsvps).omit({
   updatedAt: true,
 });
 
+export const insertGroupInvitationSchema = createInsertSchema(groupInvitations).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -338,6 +369,7 @@ export type PrayerResponse = typeof prayerResponses.$inferSelect;
 export type ChatMessage = typeof chatMessages.$inferSelect;
 export type Meeting = typeof meetings.$inferSelect;
 export type MeetingRsvp = typeof meetingRsvps.$inferSelect;
+export type GroupInvitation = typeof groupInvitations.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type InsertGroup = z.infer<typeof insertGroupSchema>;
 export type InsertPrayerRequest = z.infer<typeof insertPrayerRequestSchema>;
@@ -345,3 +377,4 @@ export type InsertGroupMembership = z.infer<typeof insertGroupMembershipSchema>;
 export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
 export type InsertMeeting = z.infer<typeof insertMeetingSchema>;
 export type InsertMeetingRsvp = z.infer<typeof insertMeetingRsvpSchema>;
+export type InsertGroupInvitation = z.infer<typeof insertGroupInvitationSchema>;
