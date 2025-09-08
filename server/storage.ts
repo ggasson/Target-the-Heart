@@ -27,6 +27,7 @@ export interface IStorage {
   
   // Group operations
   createGroup(group: InsertGroup): Promise<Group>;
+  updateGroup(id: string, group: InsertGroup): Promise<Group>;
   getGroup(id: string): Promise<Group | undefined>;
   getGroupsByLocation(latitude: number, longitude: number, radiusKm?: number): Promise<Group[]>;
   getUserGroups(userId: string): Promise<Group[]>;
@@ -88,6 +89,18 @@ export class DatabaseStorage implements IStorage {
     });
     
     return newGroup;
+  }
+
+  async updateGroup(id: string, groupData: InsertGroup): Promise<Group> {
+    const [updatedGroup] = await db
+      .update(groups)
+      .set({
+        ...groupData,
+        updatedAt: new Date(),
+      })
+      .where(eq(groups.id, id))
+      .returning();
+    return updatedGroup;
   }
 
   async getGroup(id: string): Promise<Group | undefined> {

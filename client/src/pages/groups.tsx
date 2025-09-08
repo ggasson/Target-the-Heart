@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import JoinRequestModal from "@/components/modals/join-request-modal";
 import CreateGroupModal from "@/components/modals/create-group-modal";
+import ManageGroupModal from "@/components/modals/manage-group-modal";
 import GroupCard from "@/components/group-card";
 import type { Group } from "@shared/schema";
 
@@ -17,6 +18,8 @@ export default function Groups() {
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showManageModal, setShowManageModal] = useState(false);
+  const [groupToManage, setGroupToManage] = useState<Group | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -61,6 +64,11 @@ export default function Groups() {
         message,
       });
     }
+  };
+
+  const handleManageGroup = (group: Group) => {
+    setGroupToManage(group);
+    setShowManageModal(true);
   };
 
   const filters = [
@@ -119,7 +127,12 @@ export default function Groups() {
         <div className="mb-6">
           <h3 className="font-semibold text-foreground mb-4">My Groups</h3>
           {myGroups.map((group) => (
-            <GroupCard key={group.id} group={group} isMember={true} />
+            <GroupCard 
+              key={group.id} 
+              group={group} 
+              isMember={true} 
+              onManageGroup={() => handleManageGroup(group)}
+            />
           ))}
         </div>
       )}
@@ -161,6 +174,12 @@ export default function Groups() {
       <CreateGroupModal
         open={showCreateModal}
         onOpenChange={setShowCreateModal}
+      />
+
+      <ManageGroupModal
+        open={showManageModal}
+        onOpenChange={setShowManageModal}
+        group={groupToManage}
       />
     </div>
   );

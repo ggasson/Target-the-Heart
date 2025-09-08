@@ -110,6 +110,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put('/api/groups/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const groupId = req.params.id;
+      
+      // Check if user is admin of the group
+      const group = await storage.getGroup(groupId);
+      if (!group || group.adminId !== userId) {
+        return res.status(403).json({ message: "Only group admin can update group settings" });
+      }
+      
+      const groupData = insertGroupSchema.parse({
+        ...req.body,
+        adminId: userId
+      });
+      
+      const updatedGroup = await storage.updateGroup(groupId, groupData);
+      res.json(updatedGroup);
+    } catch (error) {
+      console.error("Error updating group:", error);
+      res.status(500).json({ message: "Failed to update group" });
+    }
+  });
+
+  app.get('/api/groups/:id/members', isAuthenticated, async (req: any, res) => {
+    try {
+      const members = await storage.getGroupMemberships(req.params.id);
+      res.json(members);
+    } catch (error) {
+      console.error("Error fetching group members:", error);
+      res.status(500).json({ message: "Failed to fetch group members" });
+    }
+  });
+
   // Group membership routes
   app.post('/api/groups/:id/join', isAuthenticated, async (req: any, res) => {
     try {

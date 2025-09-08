@@ -1,14 +1,17 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/hooks/useAuth";
 
 interface GroupCardProps {
   group: any;
   isMember: boolean;
   onJoinRequest?: () => void;
+  onManageGroup?: () => void;
 }
 
-export default function GroupCard({ group, isMember, onJoinRequest }: GroupCardProps) {
+export default function GroupCard({ group, isMember, onJoinRequest, onManageGroup }: GroupCardProps) {
+  const { user } = useAuth();
   const getStatusColor = (isPublic: boolean) => {
     return isPublic 
       ? "bg-accent/10 text-accent"
@@ -18,6 +21,8 @@ export default function GroupCard({ group, isMember, onJoinRequest }: GroupCardP
   const getStatusText = (isPublic: boolean) => {
     return isPublic ? "Open" : "Private";
   };
+
+  const isAdmin = user?.id === group.adminId;
 
   return (
     <Card className="mb-3">
@@ -92,14 +97,26 @@ export default function GroupCard({ group, isMember, onJoinRequest }: GroupCardP
                 <i className="fas fa-comments mr-2"></i>
                 Chat
               </Button>
-              <Button 
-                variant="outline"
-                className="flex-1"
-                data-testid={`button-group-details-${group.id}`}
-              >
-                <i className="fas fa-info-circle mr-2"></i>
-                Details
-              </Button>
+              {isAdmin ? (
+                <Button 
+                  variant="outline"
+                  onClick={onManageGroup}
+                  className="flex-1"
+                  data-testid={`button-manage-group-${group.id}`}
+                >
+                  <i className="fas fa-cog mr-2"></i>
+                  Manage
+                </Button>
+              ) : (
+                <Button 
+                  variant="outline"
+                  className="flex-1"
+                  data-testid={`button-group-details-${group.id}`}
+                >
+                  <i className="fas fa-info-circle mr-2"></i>
+                  Details
+                </Button>
+              )}
             </>
           ) : (
             <Button 
