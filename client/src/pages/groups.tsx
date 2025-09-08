@@ -10,11 +10,13 @@ import JoinRequestModal from "@/components/modals/join-request-modal";
 import CreateGroupModal from "@/components/modals/create-group-modal";
 import ManageGroupModal from "@/components/modals/manage-group-modal";
 import GroupCard from "@/components/group-card";
+import GroupsMap from "@/components/groups-map";
 import type { Group } from "@shared/schema";
 
 export default function Groups() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFilter, setSelectedFilter] = useState("all");
+  const [viewMode, setViewMode] = useState<"list" | "map">("list");
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -122,46 +124,86 @@ export default function Groups() {
         ))}
       </div>
 
-      {/* My Groups */}
-      {myGroups.length > 0 && (
-        <div className="mb-6">
-          <h3 className="font-semibold text-foreground mb-4">My Groups</h3>
-          {myGroups.map((group) => (
-            <GroupCard 
-              key={group.id} 
-              group={group} 
-              isMember={true} 
-              onManageGroup={() => handleManageGroup(group)}
-            />
-          ))}
+      {/* View Toggle */}
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="font-semibold text-foreground">
+          {viewMode === "list" ? "Prayer Groups" : "Groups Map"}
+        </h3>
+        <div className="flex bg-muted rounded-lg p-1">
+          <Button
+            variant={viewMode === "list" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setViewMode("list")}
+            className="rounded-md"
+            data-testid="button-view-list"
+          >
+            <i className="fas fa-list mr-2"></i>
+            List
+          </Button>
+          <Button
+            variant={viewMode === "map" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setViewMode("map")}
+            className="rounded-md"
+            data-testid="button-view-map"
+          >
+            <i className="fas fa-map mr-2"></i>
+            Map
+          </Button>
         </div>
-      )}
-
-      {/* Discover New Groups */}
-      <div>
-        <h3 className="font-semibold text-foreground mb-4">Discover New Groups</h3>
-        
-        {availableGroups.length === 0 ? (
-          <Card>
-            <CardContent className="p-6 text-center">
-              <i className="fas fa-users text-4xl text-muted-foreground mb-4"></i>
-              <p className="text-muted-foreground">No groups found.</p>
-              <p className="text-sm text-muted-foreground">Be the first to create a prayer group in your area.</p>
-            </CardContent>
-          </Card>
-        ) : (
-          availableGroups
-            .filter((group) => !myGroups.some((myGroup) => myGroup.id === group.id))
-            .map((group) => (
-              <GroupCard 
-                key={group.id} 
-                group={group} 
-                isMember={false}
-                onJoinRequest={() => handleJoinRequest(group)}
-              />
-            ))
-        )}
       </div>
+
+      {/* Content Area */}
+      {viewMode === "list" ? (
+        <>
+          {/* My Groups */}
+          {myGroups.length > 0 && (
+            <div className="mb-6">
+              <h3 className="font-semibold text-foreground mb-4">My Groups</h3>
+              {myGroups.map((group) => (
+                <GroupCard 
+                  key={group.id} 
+                  group={group} 
+                  isMember={true} 
+                  onManageGroup={() => handleManageGroup(group)}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Discover New Groups */}
+          <div>
+            <h3 className="font-semibold text-foreground mb-4">Discover New Groups</h3>
+            
+            {availableGroups.length === 0 ? (
+              <Card>
+                <CardContent className="p-6 text-center">
+                  <i className="fas fa-users text-4xl text-muted-foreground mb-4"></i>
+                  <p className="text-muted-foreground">No groups found.</p>
+                  <p className="text-sm text-muted-foreground">Be the first to create a prayer group in your area.</p>
+                </CardContent>
+              </Card>
+            ) : (
+              availableGroups
+                .filter((group) => !myGroups.some((myGroup) => myGroup.id === group.id))
+                .map((group) => (
+                  <GroupCard 
+                    key={group.id} 
+                    group={group} 
+                    isMember={false}
+                    onJoinRequest={() => handleJoinRequest(group)}
+                  />
+                ))
+            )}
+          </div>
+        </>
+      ) : (
+        /* Map View */
+        <GroupsMap
+          onGroupSelect={(group) => setSelectedGroup(group)}
+          selectedGroupId={selectedGroup?.id}
+        />
+      )}
 
       <JoinRequestModal
         open={showJoinModal}

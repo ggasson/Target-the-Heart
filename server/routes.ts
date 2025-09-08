@@ -97,6 +97,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/groups/public', isAuthenticated, async (req: any, res) => {
+    try {
+      const groups = await storage.getPublicGroups();
+      res.json(groups);
+    } catch (error) {
+      console.error("Error fetching public groups:", error);
+      res.status(500).json({ message: "Failed to fetch public groups" });
+    }
+  });
+
   app.get('/api/groups/:id', isAuthenticated, async (req: any, res) => {
     try {
       const group = await storage.getGroup(req.params.id);
