@@ -101,7 +101,7 @@ export default function MeetingModal({ open, onOpenChange, groupId, meeting }: M
       const meetingData = {
         ...data,
         groupId,
-        meetingDate: new Date(data.meetingDate),
+        meetingDate: data.meetingDate, // Send as string, let server convert to Date
         status: "scheduled" as const,
       };
       return apiRequest("POST", `/api/groups/${groupId}/meetings`, meetingData);
@@ -127,7 +127,7 @@ export default function MeetingModal({ open, onOpenChange, groupId, meeting }: M
     mutationFn: async (data: MeetingFormData) => {
       const meetingData = {
         ...data,
-        meetingDate: new Date(data.meetingDate),
+        meetingDate: data.meetingDate, // Send as string, let server convert to Date
       };
       return apiRequest("PUT", `/api/meetings/${meeting?.id}`, meetingData);
     },

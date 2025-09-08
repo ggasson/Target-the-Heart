@@ -392,6 +392,10 @@ export const insertMeetingSchema = createInsertSchema(meetings).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  meetingDate: z.union([z.date(), z.string().datetime()]).transform((val) => 
+    typeof val === 'string' ? new Date(val) : val
+  ),
 });
 
 export const insertMeetingRsvpSchema = createInsertSchema(meetingRsvps).omit({
