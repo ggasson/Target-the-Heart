@@ -567,6 +567,69 @@ export class DatabaseStorage implements IStorage {
       .set({ isActive: false })
       .where(eq(groupInvitations.id, id));
   }
+
+  // Get next upcoming meeting across all user groups with RSVP counts
+  async getNextUpcomingMeeting(userId: string): Promise<(Meeting & { group: Group; rsvpCounts: { attending: number; notAttending: number; maybe: number; notResponded: number }; userRsvp?: MeetingRsvp }) | null> {
+    const now = new Date();
+    
+    // Get all user's groups
+    const userGroups = await this.getUserGroups(userId);
+    if (userGroups.length === 0) return null;
+    
+    const groupIds = userGroups.map(g => g.id);
+    
+    // Get the next upcoming meeting across all groups
+    const [nextMeeting] = await db
+      .select()
+      .from(meetings)
+      .innerJoin(groups, eq(meetings.groupId, groups.id))
+      .where(
+        and(
+          sql`${meetings.groupId} = ANY(${groupIds})`,
+          sql`${meetings.meetingDate} >= ${now}`,
+          eq(meetings.status, "scheduled")
+        )
+      )
+      .orderBy(asc(meetings.meetingDate))
+      .limit(1);
+
+    if (!nextMeeting) return null;
+
+    // Get RSVP counts for this meeting
+    const rsvps = await db
+      .select()
+      .from(meetingRsvps)
+      .where(eq(meetingRsvps.meetingId, nextMeeting.meetings.id));
+
+    // Get total group members count
+    const groupMembers = await db
+      .select()
+      .from(groupMemberships)
+      .where(
+        and(
+          eq(groupMemberships.groupId, nextMeeting.meetings.groupId),
+          eq(groupMemberships.status, "approved")
+        )
+      );
+
+    // Count RSVPs by status
+    const rsvpCounts = {
+      attending: rsvps.filter(r => r.status === "attending").length,
+      notAttending: rsvps.filter(r => r.status === "not_attending").length,
+      maybe: rsvps.filter(r => r.status === "maybe").length,
+      notResponded: groupMembers.length - rsvps.length
+    };
+
+    // Get user's RSVP if exists
+    const userRsvp = rsvps.find(r => r.userId === userId);
+
+    return {
+      ...nextMeeting.meetings,
+      group: nextMeeting.groups,
+      rsvpCounts,
+      userRsvp
+    };
+  }
 }
 
 export const storage = new DatabaseStorage();

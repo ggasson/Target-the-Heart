@@ -406,6 +406,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get next upcoming meeting for user with RSVP counts
+  app.get('/api/meetings/next', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const nextMeeting = await storage.getNextUpcomingMeeting(userId);
+      res.json(nextMeeting);
+    } catch (error) {
+      console.error("Error fetching next meeting:", error);
+      res.status(500).json({ message: "Failed to fetch next meeting" });
+    }
+  });
+
   // Group invitation routes
   app.post('/api/groups/:groupId/invitations', isAuthenticated, async (req: any, res) => {
     try {

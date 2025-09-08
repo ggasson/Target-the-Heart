@@ -22,7 +22,11 @@ export default function Home({ onTabChange }: HomeProps) {
     queryKey: ["/api/prayers/my"],
   });
 
-  const nextMeeting = myGroups.length > 0 ? myGroups[0] : null;
+  // Get next upcoming meeting with RSVP data
+  const { data: nextMeeting } = useQuery<any>({
+    queryKey: ["/api/meetings/next"],
+    enabled: !!user,
+  });
 
   return (
     <div className="px-6 py-6">
@@ -61,26 +65,68 @@ export default function Home({ onTabChange }: HomeProps) {
       {/* Next Meeting */}
       {nextMeeting && (
         <div className="bg-gradient-to-r from-primary to-secondary rounded-xl p-6 mb-6 text-white">
-          <h3 className="font-semibold mb-2">Next Meeting</h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold">Next Meeting</h3>
+            <span className="text-sm bg-white/20 px-2 py-1 rounded-full" data-testid="text-group-name">
+              {nextMeeting.group?.name}
+            </span>
+          </div>
+          
+          {nextMeeting.title && (
+            <div className="mb-3">
+              <h4 className="font-medium" data-testid="text-meeting-title">{nextMeeting.title}</h4>
+            </div>
+          )}
+          
           <div className="flex items-center space-x-3 mb-3">
             <i className="fas fa-calendar-alt"></i>
             <span data-testid="text-next-meeting-time">
-              {nextMeeting.meetingDay}, {nextMeeting.meetingTime}
+              {new Date(nextMeeting.meetingDate).toLocaleDateString('en-US', { 
+                weekday: 'long',
+                month: 'short', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              })}
             </span>
           </div>
-          <div className="flex items-center space-x-3 mb-4">
-            <i className="fas fa-map-marker-alt"></i>
-            <span data-testid="text-next-meeting-location">
-              {nextMeeting.meetingLocation || 'Location TBD'}
-            </span>
+          
+          {nextMeeting.venue && (
+            <div className="flex items-center space-x-3 mb-4">
+              <i className="fas fa-map-marker-alt"></i>
+              <span data-testid="text-next-meeting-location">
+                {nextMeeting.venue}
+              </span>
+            </div>
+          )}
+
+          {/* RSVP Counts */}
+          <div className="flex items-center space-x-4 mb-4">
+            <div className="flex items-center space-x-2" data-testid="rsvp-attending">
+              <i className="fas fa-check-circle text-green-300"></i>
+              <span className="text-sm">{nextMeeting.rsvpCounts?.attending || 0}</span>
+            </div>
+            <div className="flex items-center space-x-2" data-testid="rsvp-not-attending">
+              <i className="fas fa-times-circle text-red-300"></i>
+              <span className="text-sm">{nextMeeting.rsvpCounts?.notAttending || 0}</span>
+            </div>
+            <div className="flex items-center space-x-2" data-testid="rsvp-maybe">
+              <i className="fas fa-question-circle text-yellow-300"></i>
+              <span className="text-sm">{nextMeeting.rsvpCounts?.maybe || 0}</span>
+            </div>
+            <div className="flex items-center space-x-2" data-testid="rsvp-no-response">
+              <i className="fas fa-clock text-gray-300"></i>
+              <span className="text-sm">{nextMeeting.rsvpCounts?.notResponded || 0}</span>
+            </div>
           </div>
+
           <Button 
             variant="secondary" 
             className="bg-white/20 hover:bg-white/30 text-white border-0"
-            onClick={() => onTabChange?.("groups")}
+            onClick={() => window.location.href = `/meeting/${nextMeeting.id}`}
             data-testid="button-view-meeting-details"
           >
-            View Details
+            View Meeting Details
           </Button>
         </div>
       )}
