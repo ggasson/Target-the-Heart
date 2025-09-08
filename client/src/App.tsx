@@ -43,7 +43,7 @@ function MainApp() {
             <i className="fas fa-praying-hands text-white text-sm"></i>
           </div>
           <div>
-            <h1 className="font-semibold text-foreground">PrayTogether</h1>
+            <h1 className="font-semibold text-foreground">Pray Connect</h1>
             <p className="text-xs text-muted-foreground">Your spiritual community</p>
           </div>
         </div>
@@ -75,6 +75,11 @@ function MainApp() {
           onTabChange={setActiveTab}
         />
       )}
+      
+      {/* Footer */}
+      <div className="absolute bottom-1 left-0 right-0 text-center py-1">
+        <p className="text-xs text-muted-foreground">Powered By Jesus</p>
+      </div>
     </div>
   );
 }
