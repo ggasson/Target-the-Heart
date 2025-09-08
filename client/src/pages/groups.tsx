@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,8 +23,10 @@ export default function Groups() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showManageModal, setShowManageModal] = useState(false);
   const [groupToManage, setGroupToManage] = useState<Group | null>(null);
+  const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   const { data: myGroups = [] } = useQuery<Group[]>({
     queryKey: ["/api/groups/my"],
@@ -32,6 +35,79 @@ export default function Groups() {
   const { data: availableGroups = [] } = useQuery<Group[]>({
     queryKey: ["/api/groups"],
   });
+
+  // Calculate distance between two coordinates using Haversine formula
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 3959; // Earth's radius in miles
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  };
+
+  // Get user location from profile or request it
+  useEffect(() => {
+    if ((user as any)?.latitude && (user as any)?.longitude) {
+      setUserLocation({
+        lat: Number((user as any).latitude),
+        lng: Number((user as any).longitude)
+      });
+    }
+  }, [user]);
+
+  // Filter and search groups
+  const filteredGroups = useMemo(() => {
+    let filtered = [...availableGroups];
+
+    // Apply text search
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(group => 
+        group.name.toLowerCase().includes(query) ||
+        group.description?.toLowerCase().includes(query) ||
+        group.location?.toLowerCase().includes(query)
+      );
+    }
+
+    // Apply filters
+    switch (selectedFilter) {
+      case "nearby":
+        if (userLocation) {
+          filtered = filtered.filter(group => {
+            if (!group.latitude || !group.longitude) return false;
+            const distance = calculateDistance(
+              userLocation.lat, userLocation.lng,
+              Number(group.latitude), Number(group.longitude)
+            );
+            return distance <= 25; // Within 25 miles
+          }).sort((a, b) => {
+            if (!a.latitude || !a.longitude || !b.latitude || !b.longitude) return 0;
+            const distanceA = calculateDistance(
+              userLocation.lat, userLocation.lng,
+              Number(a.latitude), Number(a.longitude)
+            );
+            const distanceB = calculateDistance(
+              userLocation.lat, userLocation.lng,
+              Number(b.latitude), Number(b.longitude)
+            );
+            return distanceA - distanceB;
+          });
+        }
+        break;
+      case "open":
+        filtered = filtered.filter(group => group.visibility === "public");
+        break;
+      case "requests":
+        // This would need additional data about join requests
+        break;
+    }
+
+    return filtered;
+  }, [availableGroups, searchQuery, selectedFilter, userLocation]);
 
   const joinRequestMutation = useMutation({
     mutationFn: async ({ groupId, message }: { groupId: string; message: string }) => {
@@ -175,25 +251,46 @@ export default function Groups() {
           <div>
             <h3 className="font-semibold text-foreground mb-4">Discover New Groups</h3>
             
-            {availableGroups.length === 0 ? (
+{filteredGroups.filter((group) => !myGroups.some((myGroup) => myGroup.id === group.id)).length === 0 ? (
               <Card>
                 <CardContent className="p-6 text-center">
                   <i className="fas fa-users text-4xl text-muted-foreground mb-4"></i>
-                  <p className="text-muted-foreground">No groups found.</p>
-                  <p className="text-sm text-muted-foreground">Be the first to create a prayer group in your area.</p>
+                  <p className="text-muted-foreground">
+                    {selectedFilter === "nearby" && !userLocation
+                      ? "Location needed to find nearby groups"
+                      : "No groups found matching your criteria."
+                    }
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {selectedFilter === "nearby" && !userLocation
+                      ? "Enable location access or update your profile location to discover groups near you."
+                      : "Try adjusting your filters or be the first to create a prayer group in your area."
+                    }
+                  </p>
                 </CardContent>
               </Card>
             ) : (
-              availableGroups
+              filteredGroups
                 .filter((group) => !myGroups.some((myGroup) => myGroup.id === group.id))
-                .map((group) => (
-                  <GroupCard 
-                    key={group.id} 
-                    group={group} 
-                    isMember={false}
-                    onJoinRequest={() => handleJoinRequest(group)}
-                  />
-                ))
+                .map((group) => {
+                  // Calculate distance for display
+                  let distance: number | undefined;
+                  if (userLocation && group.latitude && group.longitude) {
+                    distance = calculateDistance(
+                      userLocation.lat, userLocation.lng,
+                      Number(group.latitude), Number(group.longitude)
+                    );
+                  }
+                  
+                  return (
+                    <GroupCard 
+                      key={group.id} 
+                      group={{...group, distance}} 
+                      isMember={false}
+                      onJoinRequest={() => handleJoinRequest(group)}
+                    />
+                  );
+                })
             )}
           </div>
         </>

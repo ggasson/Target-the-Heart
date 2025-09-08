@@ -22,7 +22,7 @@ export default function GroupCard({ group, isMember, onJoinRequest, onManageGrou
     return isPublic ? "Open" : "Private";
   };
 
-  const isAdmin = user?.id === group.adminId;
+  const isAdmin = (user as any)?.id === group.adminId;
 
   return (
     <Card className="mb-3">
@@ -81,8 +81,13 @@ export default function GroupCard({ group, isMember, onJoinRequest, onManageGrou
         {group.location && !isMember && (
           <div className="flex items-center text-sm text-muted-foreground mb-3">
             <i className="fas fa-map-marker-alt mr-2"></i>
-            <span data-testid={`text-group-distance-${group.id}`}>
+            <span data-testid={`text-group-location-${group.id}`}>
               {group.location}
+              {group.distance && (
+                <span className="ml-2 text-accent">
+                  ({group.distance.toFixed(1)} miles away)
+                </span>
+              )}
             </span>
           </div>
         )}
