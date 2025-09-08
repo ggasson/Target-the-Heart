@@ -98,10 +98,34 @@ export default function MeetingModal({ open, onOpenChange, groupId, meeting }: M
 
   const createMutation = useMutation({
     mutationFn: async (data: MeetingFormData) => {
+      let meetingDate: string;
+      
+      if (data.isRecurring) {
+        // For recurring meetings, calculate the next occurrence
+        const now = new Date();
+        const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+        const targetDay = daysOfWeek.indexOf(data.recurringDayOfWeek || "Friday");
+        const today = now.getDay();
+        let daysUntilTarget = (targetDay - today + 7) % 7;
+        if (daysUntilTarget === 0) daysUntilTarget = 7; // Next week if today is the target day
+        
+        const targetDate = new Date(now);
+        targetDate.setDate(now.getDate() + daysUntilTarget);
+        
+        // Set the time
+        const [hours, minutes] = (data.recurringTime || "17:45").split(":").map(Number);
+        targetDate.setHours(hours, minutes, 0, 0);
+        
+        meetingDate = targetDate.toISOString();
+      } else {
+        // For non-recurring meetings, use the provided date
+        meetingDate = data.meetingDate ? new Date(data.meetingDate).toISOString() : new Date().toISOString();
+      }
+
       const meetingData = {
         ...data,
         groupId,
-        meetingDate: data.meetingDate, // Send as string, let server convert to Date
+        meetingDate,
         status: "scheduled" as const,
       };
       return apiRequest("POST", `/api/groups/${groupId}/meetings`, meetingData);
@@ -125,9 +149,33 @@ export default function MeetingModal({ open, onOpenChange, groupId, meeting }: M
 
   const updateMutation = useMutation({
     mutationFn: async (data: MeetingFormData) => {
+      let meetingDate: string;
+      
+      if (data.isRecurring) {
+        // For recurring meetings, calculate the next occurrence
+        const now = new Date();
+        const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+        const targetDay = daysOfWeek.indexOf(data.recurringDayOfWeek || "Friday");
+        const today = now.getDay();
+        let daysUntilTarget = (targetDay - today + 7) % 7;
+        if (daysUntilTarget === 0) daysUntilTarget = 7; // Next week if today is the target day
+        
+        const targetDate = new Date(now);
+        targetDate.setDate(now.getDate() + daysUntilTarget);
+        
+        // Set the time
+        const [hours, minutes] = (data.recurringTime || "17:45").split(":").map(Number);
+        targetDate.setHours(hours, minutes, 0, 0);
+        
+        meetingDate = targetDate.toISOString();
+      } else {
+        // For non-recurring meetings, use the provided date
+        meetingDate = data.meetingDate ? new Date(data.meetingDate).toISOString() : new Date().toISOString();
+      }
+
       const meetingData = {
         ...data,
-        meetingDate: data.meetingDate, // Send as string, let server convert to Date
+        meetingDate,
       };
       return apiRequest("PUT", `/api/meetings/${meeting?.id}`, meetingData);
     },
@@ -203,20 +251,22 @@ export default function MeetingModal({ open, onOpenChange, groupId, meeting }: M
             />
           </div>
 
-          <div>
-            <Label htmlFor="meetingDate">Date & Time *</Label>
-            <Input
-              id="meetingDate"
-              type="datetime-local"
-              {...form.register("meetingDate")}
-              data-testid="input-meeting-date"
-            />
-            {form.formState.errors.meetingDate && (
-              <p className="text-sm text-destructive mt-1">
-                {form.formState.errors.meetingDate.message}
-              </p>
-            )}
-          </div>
+          {!isRecurring && (
+            <div>
+              <Label htmlFor="meetingDate">Date & Time *</Label>
+              <Input
+                id="meetingDate"
+                type="datetime-local"
+                {...form.register("meetingDate")}
+                data-testid="input-meeting-date"
+              />
+              {form.formState.errors.meetingDate && (
+                <p className="text-sm text-destructive mt-1">
+                  {form.formState.errors.meetingDate.message}
+                </p>
+              )}
+            </div>
+          )}
 
           <div>
             <Label htmlFor="venue">Venue</Label>
