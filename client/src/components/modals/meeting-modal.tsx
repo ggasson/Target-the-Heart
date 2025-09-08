@@ -104,7 +104,7 @@ export default function MeetingModal({ open, onOpenChange, groupId, meeting }: M
         meetingDate: new Date(data.meetingDate),
         status: "scheduled" as const,
       };
-      return apiRequest(`/api/groups/${groupId}/meetings`, "POST", meetingData);
+      return apiRequest("POST", `/api/groups/${groupId}/meetings`, meetingData);
     },
     onSuccess: () => {
       toast({
@@ -129,7 +129,7 @@ export default function MeetingModal({ open, onOpenChange, groupId, meeting }: M
         ...data,
         meetingDate: new Date(data.meetingDate),
       };
-      return apiRequest(`/api/meetings/${meeting?.id}`, "PUT", meetingData);
+      return apiRequest("PUT", `/api/meetings/${meeting?.id}`, meetingData);
     },
     onSuccess: () => {
       toast({

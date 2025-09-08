@@ -30,7 +30,8 @@ export default function UpcomingMeetings({ groupId }: UpcomingMeetingsProps) {
       
       const rsvpPromises = meetings.map(async (meeting) => {
         try {
-          const rsvp = await apiRequest(`/api/meetings/${meeting.id}/rsvp/my`);
+          const response = await apiRequest("GET", `/api/meetings/${meeting.id}/rsvp/my`);
+          const rsvp = await response.json();
           return { [meeting.id]: rsvp };
         } catch (error) {
           return { [meeting.id]: null };
@@ -46,7 +47,7 @@ export default function UpcomingMeetings({ groupId }: UpcomingMeetingsProps) {
   // RSVP mutation
   const rsvpMutation = useMutation({
     mutationFn: async ({ meetingId, status }: { meetingId: string; status: 'attending' | 'not_attending' | 'maybe' }) => {
-      return apiRequest(`/api/meetings/${meetingId}/rsvp`, "POST", { status });
+      return apiRequest("POST", `/api/meetings/${meetingId}/rsvp`, { status });
     },
     onSuccess: () => {
       toast({

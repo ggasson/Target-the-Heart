@@ -25,7 +25,7 @@ function QuickRSVP({ meetingId, currentRsvp }: QuickRSVPProps) {
 
   const rsvpMutation = useMutation({
     mutationFn: async (data: { status: string; guestCount: string }) => {
-      return apiRequest(`/api/meetings/${meetingId}/rsvp`, 'POST', {
+      return apiRequest('POST', `/api/meetings/${meetingId}/rsvp`, {
         status: data.status,
         guestCount: data.guestCount,
       });
