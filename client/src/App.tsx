@@ -13,6 +13,7 @@ import Prayers from "@/pages/prayers";
 import Chat from "@/pages/chat";
 import Profile from "@/pages/profile";
 import InvitePage from "@/pages/invite";
+import MeetingDetailPage from "@/pages/meeting-detail";
 import BottomNavigation from "@/components/bottom-navigation";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import NotFound from "@/pages/not-found";
@@ -102,6 +103,7 @@ function Router() {
       ) : (
         <>
           <Route path="/" component={MainApp} />
+          <Route path="/meeting/:meetingId" component={MeetingDetailPage} />
         </>
       )}
       <Route component={NotFound} />

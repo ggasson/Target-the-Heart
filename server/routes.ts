@@ -418,6 +418,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get meeting details by ID
+  app.get('/api/meetings/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const meeting = await storage.getMeeting(req.params.id);
+      if (!meeting) {
+        return res.status(404).json({ message: "Meeting not found" });
+      }
+      res.json(meeting);
+    } catch (error) {
+      console.error("Error fetching meeting:", error);
+      res.status(500).json({ message: "Failed to fetch meeting" });
+    }
+  });
+
   // Group invitation routes
   app.post('/api/groups/:groupId/invitations', isAuthenticated, async (req: any, res) => {
     try {

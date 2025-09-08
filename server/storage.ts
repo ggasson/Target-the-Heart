@@ -27,7 +27,7 @@ import {
   type InsertGroupInvitation,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, or, desc, asc, sql, count, isNull } from "drizzle-orm";
+import { eq, and, or, desc, asc, sql, count, isNull, inArray } from "drizzle-orm";
 
 export interface IStorage {
   // User operations (mandatory for Replit Auth)
@@ -585,7 +585,7 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(groups, eq(meetings.groupId, groups.id))
       .where(
         and(
-          sql`${meetings.groupId} = ANY(${groupIds})`,
+          inArray(meetings.groupId, groupIds),
           sql`${meetings.meetingDate} >= ${now}`,
           eq(meetings.status, "scheduled")
         )
