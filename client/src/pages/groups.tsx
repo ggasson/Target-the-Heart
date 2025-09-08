@@ -7,21 +7,24 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import JoinRequestModal from "@/components/modals/join-request-modal";
+import CreateGroupModal from "@/components/modals/create-group-modal";
 import GroupCard from "@/components/group-card";
+import type { Group } from "@shared/schema";
 
 export default function Groups() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFilter, setSelectedFilter] = useState("all");
-  const [selectedGroup, setSelectedGroup] = useState<any>(null);
+  const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
   const [showJoinModal, setShowJoinModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: myGroups = [] } = useQuery({
+  const { data: myGroups = [] } = useQuery<Group[]>({
     queryKey: ["/api/groups/my"],
   });
 
-  const { data: availableGroups = [] } = useQuery({
+  const { data: availableGroups = [] } = useQuery<Group[]>({
     queryKey: ["/api/groups"],
   });
 
@@ -69,6 +72,19 @@ export default function Groups() {
 
   return (
     <div className="px-6 py-6">
+      {/* Header with Create Button */}
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-xl font-bold text-foreground">Prayer Groups</h2>
+        <Button
+          onClick={() => setShowCreateModal(true)}
+          size="icon"
+          className="rounded-full"
+          data-testid="button-create-group"
+        >
+          <i className="fas fa-plus"></i>
+        </Button>
+      </div>
+
       {/* Search Bar */}
       <div className="relative mb-6">
         <Input
@@ -140,6 +156,11 @@ export default function Groups() {
         group={selectedGroup}
         onSubmit={handleJoinSubmit}
         isLoading={joinRequestMutation.isPending}
+      />
+
+      <CreateGroupModal
+        open={showCreateModal}
+        onOpenChange={setShowCreateModal}
       />
     </div>
   );

@@ -20,7 +20,7 @@ function MainApp() {
   const renderActiveTab = () => {
     switch (activeTab) {
       case "home":
-        return <Home />;
+        return <Home onTabChange={setActiveTab} />;
       case "groups":
         return <Groups />;
       case "prayers":
@@ -28,7 +28,7 @@ function MainApp() {
       case "chat":
         return <Chat />;
       default:
-        return <Home />;
+        return <Home onTabChange={setActiveTab} />;
     }
   };
 

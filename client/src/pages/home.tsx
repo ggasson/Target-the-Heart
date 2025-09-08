@@ -4,16 +4,21 @@ import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import PrayerModal from "@/components/modals/prayer-modal";
 import { useAuth } from "@/hooks/useAuth";
+import type { Group, PrayerRequest } from "@shared/schema";
 
-export default function Home() {
+interface HomeProps {
+  onTabChange?: (tab: string) => void;
+}
+
+export default function Home({ onTabChange }: HomeProps) {
   const { user } = useAuth();
   const [showPrayerModal, setShowPrayerModal] = useState(false);
   
-  const { data: myGroups = [] } = useQuery({
+  const { data: myGroups = [] } = useQuery<Group[]>({
     queryKey: ["/api/groups/my"],
   });
 
-  const { data: recentPrayers = [] } = useQuery({
+  const { data: recentPrayers = [] } = useQuery<(PrayerRequest & { group: Group; responses: any[] })[]>({
     queryKey: ["/api/prayers/my"],
   });
 
@@ -132,6 +137,7 @@ export default function Home() {
       {/* Quick Actions */}
       <div className="grid grid-cols-2 gap-3">
         <Button 
+          onClick={() => onTabChange?.("groups")}
           className="bg-primary text-primary-foreground p-4 h-auto flex flex-col items-center space-y-2"
           data-testid="button-find-groups"
         >
