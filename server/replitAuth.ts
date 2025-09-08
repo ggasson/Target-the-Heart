@@ -85,14 +85,22 @@ export async function setupAuth(app: Express) {
     verified(null, user);
   };
 
-  for (const domain of process.env
-    .REPLIT_DOMAINS!.split(",")) {
+  const domains = process.env.REPLIT_DOMAINS!.split(",");
+  
+  // Add localhost for development
+  if (process.env.NODE_ENV === "development") {
+    domains.push("localhost");
+  }
+  
+  for (const domain of domains) {
     const strategy = new Strategy(
       {
         name: `replitauth:${domain}`,
         config,
         scope: "openid email profile offline_access",
-        callbackURL: `https://${domain}/api/callback`,
+        callbackURL: domain.includes("localhost") 
+          ? `http://${domain}:5000/api/callback`
+          : `https://${domain}/api/callback`,
       },
       verify,
     );
@@ -118,10 +126,14 @@ export async function setupAuth(app: Express) {
 
   app.get("/api/logout", (req, res) => {
     req.logout(() => {
+      const hostname = req.hostname.includes("localhost") 
+        ? `${req.hostname}:${process.env.PORT || 5000}`
+        : req.hostname;
+      
       res.redirect(
         client.buildEndSessionUrl(config, {
           client_id: process.env.REPL_ID!,
-          post_logout_redirect_uri: `${req.protocol}://${req.hostname}`,
+          post_logout_redirect_uri: `${req.protocol}://${hostname}`,
         }).href
       );
     });
