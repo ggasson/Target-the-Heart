@@ -137,6 +137,20 @@ export const messageStatusEnum = pgEnum("message_status", [
   "rejected"
 ]);
 
+// Meeting status
+export const meetingStatusEnum = pgEnum("meeting_status", [
+  "scheduled",
+  "cancelled",
+  "completed"
+]);
+
+// RSVP status
+export const rsvpStatusEnum = pgEnum("rsvp_status", [
+  "attending",
+  "not_attending",
+  "maybe"
+]);
+
 // Chat messages
 export const chatMessages = pgTable("chat_messages", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -149,6 +163,39 @@ export const chatMessages = pgTable("chat_messages", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Group meetings
+export const meetings = pgTable("meetings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  groupId: varchar("group_id").references(() => groups.id).notNull(),
+  title: varchar("title").notNull(),
+  description: text("description"),
+  topic: varchar("topic"),
+  meetingDate: timestamp("meeting_date").notNull(),
+  venue: varchar("venue"),
+  venueAddress: text("venue_address"),
+  latitude: decimal("latitude", { precision: 10, scale: 8 }),
+  longitude: decimal("longitude", { precision: 11, scale: 8 }),
+  status: meetingStatusEnum("status").default("scheduled"),
+  maxAttendees: varchar("max_attendees"),
+  isRecurring: boolean("is_recurring").default(false),
+  recurringPattern: varchar("recurring_pattern"), // weekly, monthly, etc.
+  recurringDayOfWeek: varchar("recurring_day_of_week"), // Monday, Tuesday, etc.
+  recurringTime: varchar("recurring_time"), // HH:MM format
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Meeting RSVPs
+export const meetingRsvps = pgTable("meeting_rsvps", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  meetingId: varchar("meeting_id").references(() => meetings.id).notNull(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  status: rsvpStatusEnum("status").notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   adminGroups: many(groups),
@@ -156,6 +203,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   prayerRequests: many(prayerRequests),
   prayerResponses: many(prayerResponses),
   chatMessages: many(chatMessages),
+  meetingRsvps: many(meetingRsvps),
 }));
 
 export const groupsRelations = relations(groups, ({ one, many }) => ({
@@ -166,6 +214,7 @@ export const groupsRelations = relations(groups, ({ one, many }) => ({
   memberships: many(groupMemberships),
   prayerRequests: many(prayerRequests),
   chatMessages: many(chatMessages),
+  meetings: many(meetings),
 }));
 
 export const groupMembershipsRelations = relations(groupMemberships, ({ one }) => ({
@@ -218,6 +267,25 @@ export const chatMessagesRelations = relations(chatMessages, ({ one }) => ({
   }),
 }));
 
+export const meetingsRelations = relations(meetings, ({ one, many }) => ({
+  group: one(groups, {
+    fields: [meetings.groupId],
+    references: [groups.id],
+  }),
+  rsvps: many(meetingRsvps),
+}));
+
+export const meetingRsvpsRelations = relations(meetingRsvps, ({ one }) => ({
+  meeting: one(meetings, {
+    fields: [meetingRsvps.meetingId],
+    references: [meetings.id],
+  }),
+  user: one(users, {
+    fields: [meetingRsvps.userId],
+    references: [users.id],
+  }),
+}));
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -248,6 +316,18 @@ export const insertChatMessageSchema = createInsertSchema(chatMessages).omit({
   createdAt: true,
 });
 
+export const insertMeetingSchema = createInsertSchema(meetings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertMeetingRsvpSchema = createInsertSchema(meetingRsvps).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -256,8 +336,12 @@ export type GroupMembership = typeof groupMemberships.$inferSelect;
 export type PrayerRequest = typeof prayerRequests.$inferSelect;
 export type PrayerResponse = typeof prayerResponses.$inferSelect;
 export type ChatMessage = typeof chatMessages.$inferSelect;
+export type Meeting = typeof meetings.$inferSelect;
+export type MeetingRsvp = typeof meetingRsvps.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type InsertGroup = z.infer<typeof insertGroupSchema>;
 export type InsertPrayerRequest = z.infer<typeof insertPrayerRequestSchema>;
 export type InsertGroupMembership = z.infer<typeof insertGroupMembershipSchema>;
 export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
+export type InsertMeeting = z.infer<typeof insertMeetingSchema>;
+export type InsertMeetingRsvp = z.infer<typeof insertMeetingRsvpSchema>;
