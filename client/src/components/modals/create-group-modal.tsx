@@ -21,6 +21,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import LocationPicker from "@/components/location-picker";
 
 interface CreateGroupModalProps {
   open: boolean;
@@ -33,15 +34,17 @@ export default function CreateGroupModal({ open, onOpenChange }: CreateGroupModa
   const [meetingDay, setMeetingDay] = useState("");
   const [meetingTime, setMeetingTime] = useState("");
   const [meetingLocation, setMeetingLocation] = useState("");
+  const [groupLocation, setGroupLocation] = useState<{
+    latitude: number;
+    longitude: number;
+    address: string;
+  } | null>(null);
   const [isPublic, setIsPublic] = useState(true);
   const [requireApprovalToJoin, setRequireApprovalToJoin] = useState(true);
   const [requireApprovalToPost, setRequireApprovalToPost] = useState(false);
   const [allowMembersToInvite, setAllowMembersToInvite] = useState(false);
   const [maxMembers, setMaxMembers] = useState("50");
   const [groupRules, setGroupRules] = useState("");
-  const [useCurrentLocation, setUseCurrentLocation] = useState(false);
-  const [latitude, setLatitude] = useState<number | null>(null);
-  const [longitude, setLongitude] = useState<number | null>(null);
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -85,9 +88,9 @@ export default function CreateGroupModal({ open, onOpenChange }: CreateGroupModa
       description: description.trim(),
       meetingDay: meetingDay || null,
       meetingTime: meetingTime || null,
-      meetingLocation: meetingLocation.trim() || null,
-      latitude: latitude?.toString() || null,
-      longitude: longitude?.toString() || null,
+      meetingLocation: meetingLocation.trim() || groupLocation?.address || null,
+      latitude: groupLocation?.latitude?.toString() || null,
+      longitude: groupLocation?.longitude?.toString() || null,
       isPublic,
       requireApprovalToJoin,
       requireApprovalToPost,
@@ -105,39 +108,16 @@ export default function CreateGroupModal({ open, onOpenChange }: CreateGroupModa
     setMeetingDay("");
     setMeetingTime("");
     setMeetingLocation("");
+    setGroupLocation(null);
     setIsPublic(true);
     setRequireApprovalToJoin(true);
     setRequireApprovalToPost(false);
     setAllowMembersToInvite(false);
     setMaxMembers("50");
     setGroupRules("");
-    setUseCurrentLocation(false);
-    setLatitude(null);
-    setLongitude(null);
     onOpenChange(false);
   };
 
-  const getCurrentLocation = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setLatitude(position.coords.latitude);
-          setLongitude(position.coords.longitude);
-          toast({
-            title: "Location captured",
-            description: "Your current location has been saved for the group.",
-          });
-        },
-        (error) => {
-          toast({
-            title: "Location error",
-            description: "Unable to get your current location. Please enter manually.",
-            variant: "destructive",
-          });
-        }
-      );
-    }
-  };
 
   const weekDays = [
     { value: "monday", label: "Monday" },
@@ -214,33 +194,21 @@ export default function CreateGroupModal({ open, onOpenChange }: CreateGroupModa
           </div>
 
           {/* Location */}
+          <LocationPicker
+            onLocationChange={setGroupLocation}
+            label="Group Location (helps others find you)"
+          />
+          
           <div>
-            <Label htmlFor="meetingLocation">Meeting Location</Label>
+            <Label htmlFor="meetingLocation">Additional Meeting Details (Optional)</Label>
             <Input
               id="meetingLocation"
               type="text"
               value={meetingLocation}
               onChange={(e) => setMeetingLocation(e.target.value)}
-              placeholder="Church, home address, or meeting place"
+              placeholder="e.g., Room 201, Main Sanctuary, or specific instructions"
               data-testid="input-meeting-location"
             />
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="useLocation"
-              checked={useCurrentLocation}
-              onCheckedChange={(checked) => {
-                setUseCurrentLocation(checked as boolean);
-                if (checked) {
-                  getCurrentLocation();
-                }
-              }}
-              data-testid="checkbox-use-location"
-            />
-            <Label htmlFor="useLocation" className="text-sm">
-              Use my current location for group discovery
-            </Label>
           </div>
 
           {/* Group Settings */}
