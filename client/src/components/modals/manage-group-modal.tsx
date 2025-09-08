@@ -23,7 +23,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import MeetingModal from "@/components/modals/meeting-modal";
-import type { Group, Meeting } from "@shared/schema";
+import type { Group, Meeting, GroupInvitation } from "@shared/schema";
 
 interface ManageGroupModalProps {
   open: boolean;
@@ -77,6 +77,12 @@ export default function ManageGroupModal({ open, onOpenChange, group }: ManageGr
   const { data: pendingRequests = [] } = useQuery<any[]>({
     queryKey: ["/api/memberships/pending"],
     enabled: open,
+  });
+
+  // Fetch group invitations
+  const { data: invitations = [] } = useQuery<(GroupInvitation & { createdBy: any })[]>({
+    queryKey: ["/api/groups", group?.id, "invitations"],
+    enabled: !!group?.id && open,
   });
 
   const updateGroupMutation = useMutation({
@@ -136,6 +142,47 @@ export default function ManageGroupModal({ open, onOpenChange, group }: ManageGr
       toast({
         title: "Error",
         description: "Failed to reject member. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const createInvitationMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", `/api/groups/${group?.id}/invitations`, {});
+      return response;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Invitation created!",
+        description: "Your group invitation link has been created.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/groups", group?.id, "invitations"] });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to create invitation.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deactivateInvitationMutation = useMutation({
+    mutationFn: async (invitationId: string) => {
+      await apiRequest("DELETE", `/api/invitations/${invitationId}`);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Invitation deactivated",
+        description: "The invitation link has been deactivated.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/groups", group?.id, "invitations"] });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to deactivate invitation.",
         variant: "destructive",
       });
     },
@@ -230,6 +277,7 @@ export default function ManageGroupModal({ open, onOpenChange, group }: ManageGr
     { id: "meetings", label: "Meetings", icon: "fas fa-calendar" },
     { id: "members", label: "Members", icon: "fas fa-users" },
     { id: "requests", label: "Requests", icon: "fas fa-user-plus", badge: pendingRequests.length },
+    { id: "invitations", label: "Invitations", icon: "fas fa-share" },
   ];
 
   if (!group) return null;
@@ -640,6 +688,147 @@ export default function ManageGroupModal({ open, onOpenChange, group }: ManageGr
                       </CardContent>
                     </Card>
                   ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === "invitations" && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-medium text-foreground">Group Invitations</h3>
+              <Button
+                onClick={() => createInvitationMutation.mutate()}
+                disabled={createInvitationMutation.isPending}
+                data-testid="button-create-invitation"
+              >
+                {createInvitationMutation.isPending ? "Creating..." : "Create Invitation Link"}
+              </Button>
+            </div>
+            
+            {invitations.length === 0 ? (
+              <div className="text-center py-8">
+                <div className="w-16 h-16 bg-muted/50 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <i className="fas fa-share text-2xl text-muted-foreground"></i>
+                </div>
+                <p className="text-muted-foreground mb-2">No invitation links yet</p>
+                <p className="text-sm text-muted-foreground">Create an invitation link to share your group with others</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {invitations.map((invitation: any) => (
+                  <Card key={invitation.id}>
+                    <CardContent className="p-4">
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 bg-accent/10 rounded-full flex items-center justify-center">
+                              <i className="fas fa-link text-accent"></i>
+                            </div>
+                            <div>
+                              <p className="font-medium text-foreground">
+                                Invitation Link
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                Created by {invitation.createdBy.firstName} {invitation.createdBy.lastName}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Badge variant={invitation.isActive ? "default" : "secondary"}>
+                              {invitation.isActive ? "Active" : "Inactive"}
+                            </Badge>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => deactivateInvitationMutation.mutate(invitation.id)}
+                              disabled={deactivateInvitationMutation.isPending}
+                              data-testid={`button-deactivate-${invitation.id}`}
+                            >
+                              Deactivate
+                            </Button>
+                          </div>
+                        </div>
+                        
+                        <div className="bg-muted p-3 rounded-lg">
+                          <div className="flex items-center justify-between mb-2">
+                            <p className="text-xs text-muted-foreground">Invitation Link:</p>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                const inviteUrl = `${window.location.origin}/invite/${invitation.token}`;
+                                navigator.clipboard.writeText(inviteUrl);
+                                toast({
+                                  title: "Link copied!",
+                                  description: "The invitation link has been copied to your clipboard.",
+                                });
+                              }}
+                              data-testid={`button-copy-${invitation.id}`}
+                            >
+                              <i className="fas fa-copy mr-2"></i>
+                              Copy
+                            </Button>
+                          </div>
+                          <p className="text-sm font-mono bg-card p-2 rounded border break-all">
+                            {window.location.origin}/invite/{invitation.token}
+                          </p>
+                        </div>
+
+                        <div className="flex space-x-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              const inviteUrl = `${window.location.origin}/invite/${invitation.token}`;
+                              const message = `Join our prayer group "${group.name}" - ${inviteUrl}`;
+                              const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+                              window.open(whatsappUrl, '_blank');
+                            }}
+                            className="flex-1"
+                            data-testid={`button-whatsapp-${invitation.id}`}
+                          >
+                            <i className="fab fa-whatsapp mr-2 text-green-500"></i>
+                            Share on WhatsApp
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              const inviteUrl = `${window.location.origin}/invite/${invitation.token}`;
+                              const message = `Join our prayer group "${group.name}" - ${inviteUrl}`;
+                              if (navigator.share) {
+                                navigator.share({
+                                  title: `Join ${group.name}`,
+                                  text: message,
+                                  url: inviteUrl,
+                                });
+                              } else {
+                                navigator.clipboard.writeText(message);
+                                toast({
+                                  title: "Message copied!",
+                                  description: "The invitation message has been copied to your clipboard.",
+                                });
+                              }
+                            }}
+                            className="flex-1"
+                            data-testid={`button-share-${invitation.id}`}
+                          >
+                            <i className="fas fa-share-alt mr-2"></i>
+                            Share
+                          </Button>
+                        </div>
+                        
+                        <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t">
+                          <span>Used: {invitation.currentUses}/{invitation.maxUses === "unlimited" ? "∞" : invitation.maxUses}</span>
+                          <span>
+                            Created: {new Date(invitation.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
             )}
           </div>

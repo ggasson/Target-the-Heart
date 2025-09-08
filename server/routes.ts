@@ -505,8 +505,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Check usage limits
       if (invitation.maxUses !== "unlimited") {
-        const currentUses = parseInt(invitation.currentUses);
-        const maxUses = parseInt(invitation.maxUses);
+        const currentUses = parseInt(invitation.currentUses || "0");
+        const maxUses = parseInt(invitation.maxUses || "0");
         if (currentUses >= maxUses) {
           return res.status(400).json({ message: "This invitation has reached its usage limit" });
         }
