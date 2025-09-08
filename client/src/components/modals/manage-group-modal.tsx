@@ -22,7 +22,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import type { Group } from "@shared/schema";
+import MeetingModal from "@/components/modals/meeting-modal";
+import type { Group, Meeting } from "@shared/schema";
 
 interface ManageGroupModalProps {
   open: boolean;
@@ -43,6 +44,8 @@ export default function ManageGroupModal({ open, onOpenChange, group }: ManageGr
   const [allowMembersToInvite, setAllowMembersToInvite] = useState(false);
   const [maxMembers, setMaxMembers] = useState("50");
   const [groupRules, setGroupRules] = useState("");
+  const [showMeetingModal, setShowMeetingModal] = useState(false);
+  const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -65,13 +68,13 @@ export default function ManageGroupModal({ open, onOpenChange, group }: ManageGr
   }, [group, open]);
 
   // Fetch group members
-  const { data: members = [] } = useQuery({
+  const { data: members = [] } = useQuery<any[]>({
     queryKey: ["/api/groups", group?.id, "members"],
     enabled: !!group?.id && open,
   });
 
   // Fetch pending membership requests
-  const { data: pendingRequests = [] } = useQuery({
+  const { data: pendingRequests = [] } = useQuery<any[]>({
     queryKey: ["/api/memberships/pending"],
     enabled: open,
   });
@@ -165,6 +168,42 @@ export default function ManageGroupModal({ open, onOpenChange, group }: ManageGr
     updateGroupMutation.mutate(groupData);
   };
 
+  const deleteMeetingMutation = useMutation({
+    mutationFn: async (meetingId: string) => {
+      return apiRequest(`/api/meetings/${meetingId}`, "DELETE");
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Meeting deleted successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: [`/api/groups/${group?.id}/meetings`] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete meeting",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleEditMeeting = (meeting: Meeting) => {
+    setSelectedMeeting(meeting);
+    setShowMeetingModal(true);
+  };
+
+  const handleCreateMeeting = () => {
+    setSelectedMeeting(null);
+    setShowMeetingModal(true);
+  };
+
+  const handleDeleteMeeting = (meetingId: string) => {
+    if (confirm("Are you sure you want to delete this meeting?")) {
+      deleteMeetingMutation.mutate(meetingId);
+    }
+  };
+
   const handleClose = () => {
     setActiveTab("settings");
     onOpenChange(false);
@@ -180,8 +219,15 @@ export default function ManageGroupModal({ open, onOpenChange, group }: ManageGr
     { value: "sunday", label: "Sunday" },
   ];
 
+  // Fetch group meetings
+  const { data: meetings = [] } = useQuery<Meeting[]>({
+    queryKey: [`/api/groups/${group?.id}/meetings`],
+    enabled: !!group?.id && open,
+  });
+
   const tabs = [
     { id: "settings", label: "Settings", icon: "fas fa-cog" },
+    { id: "meetings", label: "Meetings", icon: "fas fa-calendar" },
     { id: "members", label: "Members", icon: "fas fa-users" },
     { id: "requests", label: "Requests", icon: "fas fa-user-plus", badge: pendingRequests.length },
   ];
@@ -379,6 +425,125 @@ export default function ManageGroupModal({ open, onOpenChange, group }: ManageGr
           </div>
         )}
 
+        {activeTab === "meetings" && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-medium text-foreground">Group Meetings</h3>
+              <Button
+                onClick={handleCreateMeeting}
+                size="sm"
+                data-testid="button-create-meeting"
+              >
+                <i className="fas fa-plus mr-2"></i>
+                New Meeting
+              </Button>
+            </div>
+            
+            {meetings.length === 0 ? (
+              <div className="text-center py-8">
+                <i className="fas fa-calendar text-4xl text-muted-foreground mb-4"></i>
+                <p className="text-muted-foreground mb-4">No meetings scheduled yet.</p>
+                <Button
+                  onClick={handleCreateMeeting}
+                  variant="outline"
+                  data-testid="button-create-first-meeting"
+                >
+                  Schedule Your First Meeting
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {meetings.map((meeting: Meeting) => {
+                  const meetingDate = new Date(meeting.meetingDate);
+                  const isUpcoming = meetingDate > new Date();
+                  
+                  return (
+                    <Card key={meeting.id}>
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-2 mb-2">
+                              <h4 className="font-medium text-foreground">{meeting.title}</h4>
+                              <Badge 
+                                variant={meeting.status === "scheduled" ? "default" : meeting.status === "cancelled" ? "destructive" : "secondary"}
+                              >
+                                {meeting.status}
+                              </Badge>
+                              {isUpcoming && (
+                                <Badge variant="outline" className="text-xs">
+                                  Upcoming
+                                </Badge>
+                              )}
+                            </div>
+                            
+                            {meeting.topic && (
+                              <p className="text-sm text-muted-foreground mb-2">
+                                <i className="fas fa-tag mr-1"></i>
+                                Topic: {meeting.topic}
+                              </p>
+                            )}
+                            
+                            <div className="flex items-center space-x-4 text-sm text-muted-foreground mb-2">
+                              <span>
+                                <i className="fas fa-calendar mr-1"></i>
+                                {meetingDate.toLocaleDateString()}
+                              </span>
+                              <span>
+                                <i className="fas fa-clock mr-1"></i>
+                                {meetingDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                            
+                            {meeting.venue && (
+                              <p className="text-sm text-muted-foreground mb-2">
+                                <i className="fas fa-map-marker-alt mr-1"></i>
+                                {meeting.venue}
+                              </p>
+                            )}
+                            
+                            {meeting.description && (
+                              <p className="text-sm text-muted-foreground">
+                                {meeting.description}
+                              </p>
+                            )}
+                            
+                            {meeting.isRecurring && (
+                              <Badge variant="outline" className="mt-2">
+                                <i className="fas fa-repeat mr-1"></i>
+                                Recurring {meeting.recurringPattern}
+                              </Badge>
+                            )}
+                          </div>
+                          
+                          <div className="flex space-x-2 ml-4">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleEditMeeting(meeting)}
+                              data-testid={`button-edit-meeting-${meeting.id}`}
+                            >
+                              <i className="fas fa-edit"></i>
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleDeleteMeeting(meeting.id)}
+                              disabled={deleteMeetingMutation.isPending}
+                              data-testid={`button-delete-meeting-${meeting.id}`}
+                            >
+                              <i className="fas fa-trash"></i>
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
         {activeTab === "members" && (
           <div className="space-y-4">
             <h3 className="font-medium text-foreground mb-4">Group Members</h3>
@@ -480,6 +645,13 @@ export default function ManageGroupModal({ open, onOpenChange, group }: ManageGr
           </div>
         )}
       </DialogContent>
+      
+      <MeetingModal
+        open={showMeetingModal}
+        onOpenChange={setShowMeetingModal}
+        groupId={group.id}
+        meeting={selectedMeeting}
+      />
     </Dialog>
   );
 }
