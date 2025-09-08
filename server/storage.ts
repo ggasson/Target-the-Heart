@@ -7,6 +7,7 @@ import {
   chatMessages,
   meetings,
   meetingRsvps,
+  groupInvitations,
   type User,
   type UpsertUser,
   type Group,
@@ -16,12 +17,14 @@ import {
   type ChatMessage,
   type Meeting,
   type MeetingRsvp,
+  type GroupInvitation,
   type InsertGroup,
   type InsertPrayerRequest,
   type InsertGroupMembership,
   type InsertChatMessage,
   type InsertMeeting,
   type InsertMeetingRsvp,
+  type InsertGroupInvitation,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, desc, asc, sql, count, isNull } from "drizzle-orm";
@@ -72,6 +75,13 @@ export interface IStorage {
   getMeetingRsvps(meetingId: string): Promise<(MeetingRsvp & { user: User })[]>;
   getUserRsvp(meetingId: string, userId: string): Promise<MeetingRsvp | undefined>;
   deleteRsvp(meetingId: string, userId: string): Promise<void>;
+  
+  // Invitation operations
+  createGroupInvitation(invitation: InsertGroupInvitation): Promise<GroupInvitation>;
+  getGroupInvitation(token: string): Promise<(GroupInvitation & { group: Group }) | undefined>;
+  useGroupInvitation(token: string): Promise<void>;
+  getGroupInvitations(groupId: string): Promise<(GroupInvitation & { createdBy: User })[]>;
+  deactivateGroupInvitation(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -493,6 +503,69 @@ export class DatabaseStorage implements IStorage {
           eq(meetingRsvps.userId, userId)
         )
       );
+  }
+
+  // Invitation operations
+  async createGroupInvitation(invitation: InsertGroupInvitation): Promise<GroupInvitation> {
+    const [newInvitation] = await db
+      .insert(groupInvitations)
+      .values(invitation)
+      .returning();
+    return newInvitation;
+  }
+
+  async getGroupInvitation(token: string): Promise<(GroupInvitation & { group: Group }) | undefined> {
+    const [invitation] = await db
+      .select()
+      .from(groupInvitations)
+      .innerJoin(groups, eq(groupInvitations.groupId, groups.id))
+      .where(
+        and(
+          eq(groupInvitations.token, token),
+          eq(groupInvitations.isActive, true),
+          or(
+            isNull(groupInvitations.expiresAt),
+            sql`${groupInvitations.expiresAt} > NOW()`
+          )
+        )
+      );
+
+    if (!invitation) return undefined;
+
+    return {
+      ...invitation.group_invitations,
+      group: invitation.groups
+    };
+  }
+
+  async useGroupInvitation(token: string): Promise<void> {
+    await db
+      .update(groupInvitations)
+      .set({
+        currentUses: sql`CAST(${groupInvitations.currentUses} AS INTEGER) + 1`
+      })
+      .where(eq(groupInvitations.token, token));
+  }
+
+  async getGroupInvitations(groupId: string): Promise<(GroupInvitation & { createdBy: User })[]> {
+    const invitations = await db
+      .select()
+      .from(groupInvitations)
+      .innerJoin(users, eq(groupInvitations.createdById, users.id))
+      .where(eq(groupInvitations.groupId, groupId))
+      .orderBy(desc(groupInvitations.createdAt));
+
+    return invitations.map(result => ({
+      ...result.group_invitations,
+      createdBy: result.users
+    }));
+  }
+
+  async deactivateGroupInvitation(id: string): Promise<void> {
+    await db
+      .update(groupInvitations)
+      .set({ isActive: false })
+      .where(eq(groupInvitations.id, id));
   }
 }
 
