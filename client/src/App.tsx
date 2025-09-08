@@ -12,6 +12,7 @@ import Groups from "@/pages/groups";
 import Prayers from "@/pages/prayers";
 import Chat from "@/pages/chat";
 import Profile from "@/pages/profile";
+import InvitePage from "@/pages/invite";
 import BottomNavigation from "@/components/bottom-navigation";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import NotFound from "@/pages/not-found";
@@ -93,6 +94,9 @@ function Router() {
 
   return (
     <Switch>
+      {/* Invitation route - accessible to both authenticated and unauthenticated users */}
+      <Route path="/invite/:token" component={InvitePage} />
+      
       {isLoading || !isAuthenticated ? (
         <Route path="/" component={Landing} />
       ) : (
