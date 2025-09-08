@@ -55,6 +55,12 @@ export const groups = pgTable("groups", {
   latitude: decimal("latitude", { precision: 10, scale: 8 }),
   longitude: decimal("longitude", { precision: 11, scale: 8 }),
   isPublic: boolean("is_public").default(true),
+  // Moderation settings
+  requireApprovalToJoin: boolean("require_approval_to_join").default(true),
+  requireApprovalToPost: boolean("require_approval_to_post").default(false),
+  allowMembersToInvite: boolean("allow_members_to_invite").default(false),
+  maxMembers: varchar("max_members").default("50"),
+  groupRules: text("group_rules"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -66,12 +72,20 @@ export const membershipStatusEnum = pgEnum("membership_status", [
   "rejected"
 ]);
 
+// Group member roles
+export const memberRoleEnum = pgEnum("member_role", [
+  "member",
+  "admin",
+  "moderator"
+]);
+
 // Group memberships
 export const groupMemberships = pgTable("group_memberships", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   groupId: varchar("group_id").references(() => groups.id).notNull(),
   userId: varchar("user_id").references(() => users.id).notNull(),
   status: membershipStatusEnum("status").default("pending"),
+  role: memberRoleEnum("role").default("member"),
   message: text("message"), // Join request message
   joinedAt: timestamp("joined_at"),
   createdAt: timestamp("created_at").defaultNow(),
@@ -116,6 +130,13 @@ export const prayerResponses = pgTable("prayer_responses", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Message status for moderation
+export const messageStatusEnum = pgEnum("message_status", [
+  "pending",
+  "approved",
+  "rejected"
+]);
+
 // Chat messages
 export const chatMessages = pgTable("chat_messages", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -123,6 +144,7 @@ export const chatMessages = pgTable("chat_messages", {
   userId: varchar("user_id").references(() => users.id).notNull(),
   content: text("content").notNull(),
   messageType: varchar("message_type").default("text"), // text, prayer_request, etc.
+  status: messageStatusEnum("status").default("approved"), // Auto-approved unless group requires moderation
   prayerRequestId: varchar("prayer_request_id").references(() => prayerRequests.id),
   createdAt: timestamp("created_at").defaultNow(),
 });
