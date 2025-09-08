@@ -25,12 +25,9 @@ function QuickRSVP({ meetingId, currentRsvp }: QuickRSVPProps) {
 
   const rsvpMutation = useMutation({
     mutationFn: async (data: { status: string; guestCount: string }) => {
-      return apiRequest(`/api/meetings/${meetingId}/rsvp`, {
-        method: 'POST',
-        body: JSON.stringify({
-          status: data.status,
-          guestCount: data.guestCount,
-        }),
+      return apiRequest(`/api/meetings/${meetingId}/rsvp`, 'POST', {
+        status: data.status,
+        guestCount: data.guestCount,
       });
     },
     onSuccess: () => {
@@ -216,13 +213,13 @@ export default function Home({ onTabChange }: HomeProps) {
           <div className="flex items-center space-x-3 mb-3">
             <i className="fas fa-calendar-alt"></i>
             <span data-testid="text-next-meeting-time">
-              {new Date(nextMeeting.meetingDate).toLocaleDateString('en-US', { 
+              {nextMeeting.meetingDate ? new Date(nextMeeting.meetingDate).toLocaleDateString('en-US', { 
                 weekday: 'long',
                 month: 'short', 
                 day: 'numeric',
                 hour: '2-digit',
                 minute: '2-digit'
-              })}
+              }) : 'TBD'}
             </span>
           </div>
           
@@ -296,7 +293,7 @@ export default function Home({ onTabChange }: HomeProps) {
                       {prayer.title}
                     </h4>
                     <span className="text-xs text-muted-foreground">
-                      {new Date(prayer.createdAt).toLocaleDateString()}
+                      {prayer.createdAt ? new Date(prayer.createdAt).toLocaleDateString() : ''}
                     </span>
                   </div>
                   <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
