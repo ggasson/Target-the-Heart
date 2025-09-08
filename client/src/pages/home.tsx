@@ -28,6 +28,12 @@ export default function Home({ onTabChange }: HomeProps) {
     enabled: !!user,
   });
 
+  // Get unread notifications count
+  const { data: unreadNotifications = [] } = useQuery<any[]>({
+    queryKey: ["/api/notifications/unread"],
+    enabled: !!user,
+  });
+
   return (
     <div className="px-6 py-6">
       {/* Quick Stats */}

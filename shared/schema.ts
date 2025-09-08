@@ -209,6 +209,31 @@ export const groupInvitations = pgTable("group_invitations", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Notification types
+export const notificationTypeEnum = pgEnum("notification_type", [
+  "meeting_reminder",
+  "prayer_request",
+  "rsvp_reminder",
+  "meeting_update",
+  "general"
+]);
+
+// Notifications
+export const notifications = pgTable("notifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  type: notificationTypeEnum("type").notNull(),
+  title: varchar("title").notNull(),
+  message: text("message").notNull(),
+  relatedMeetingId: varchar("related_meeting_id").references(() => meetings.id),
+  relatedPrayerRequestId: varchar("related_prayer_request_id").references(() => prayerRequests.id),
+  relatedGroupId: varchar("related_group_id").references(() => groups.id),
+  isRead: boolean("is_read").default(false),
+  scheduledFor: timestamp("scheduled_for"), // When to send the notification
+  sentAt: timestamp("sent_at"), // When notification was actually sent
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   adminGroups: many(groups),
@@ -218,6 +243,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   chatMessages: many(chatMessages),
   meetingRsvps: many(meetingRsvps),
   createdInvitations: many(groupInvitations),
+  notifications: many(notifications),
 }));
 
 export const groupsRelations = relations(groups, ({ one, many }) => ({
@@ -312,6 +338,25 @@ export const groupInvitationsRelations = relations(groupInvitations, ({ one }) =
   }),
 }));
 
+export const notificationsRelations = relations(notifications, ({ one }) => ({
+  user: one(users, {
+    fields: [notifications.userId],
+    references: [users.id],
+  }),
+  meeting: one(meetings, {
+    fields: [notifications.relatedMeetingId],
+    references: [meetings.id],
+  }),
+  prayerRequest: one(prayerRequests, {
+    fields: [notifications.relatedPrayerRequestId],
+    references: [prayerRequests.id],
+  }),
+  group: one(groups, {
+    fields: [notifications.relatedGroupId],
+    references: [groups.id],
+  }),
+}));
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -359,6 +404,11 @@ export const insertGroupInvitationSchema = createInsertSchema(groupInvitations).
   createdAt: true,
 });
 
+export const insertNotificationSchema = createInsertSchema(notifications).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -370,6 +420,7 @@ export type ChatMessage = typeof chatMessages.$inferSelect;
 export type Meeting = typeof meetings.$inferSelect;
 export type MeetingRsvp = typeof meetingRsvps.$inferSelect;
 export type GroupInvitation = typeof groupInvitations.$inferSelect;
+export type Notification = typeof notifications.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type InsertGroup = z.infer<typeof insertGroupSchema>;
 export type InsertPrayerRequest = z.infer<typeof insertPrayerRequestSchema>;
@@ -378,3 +429,4 @@ export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
 export type InsertMeeting = z.infer<typeof insertMeetingSchema>;
 export type InsertMeetingRsvp = z.infer<typeof insertMeetingRsvpSchema>;
 export type InsertGroupInvitation = z.infer<typeof insertGroupInvitationSchema>;
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;

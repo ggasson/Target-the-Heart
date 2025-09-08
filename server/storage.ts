@@ -8,6 +8,7 @@ import {
   meetings,
   meetingRsvps,
   groupInvitations,
+  notifications,
   type User,
   type UpsertUser,
   type Group,
@@ -25,6 +26,8 @@ import {
   type InsertMeeting,
   type InsertMeetingRsvp,
   type InsertGroupInvitation,
+  type InsertNotification,
+  type Notification,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, desc, asc, sql, count, isNull, inArray } from "drizzle-orm";
@@ -629,6 +632,129 @@ export class DatabaseStorage implements IStorage {
       rsvpCounts,
       userRsvp
     };
+  }
+
+  // Notification operations
+  async createNotification(notification: InsertNotification): Promise<Notification> {
+    const [newNotification] = await db
+      .insert(notifications)
+      .values(notification)
+      .returning();
+    return newNotification;
+  }
+
+  async getUserNotifications(userId: string, limit: number = 50): Promise<Notification[]> {
+    return await db
+      .select()
+      .from(notifications)
+      .where(eq(notifications.userId, userId))
+      .orderBy(desc(notifications.createdAt))
+      .limit(limit);
+  }
+
+  async getUnreadNotifications(userId: string): Promise<Notification[]> {
+    return await db
+      .select()
+      .from(notifications)
+      .where(
+        and(
+          eq(notifications.userId, userId),
+          eq(notifications.isRead, false)
+        )
+      )
+      .orderBy(desc(notifications.createdAt));
+  }
+
+  async markNotificationAsRead(notificationId: string): Promise<void> {
+    await db
+      .update(notifications)
+      .set({ isRead: true })
+      .where(eq(notifications.id, notificationId));
+  }
+
+  async markAllNotificationsAsRead(userId: string): Promise<void> {
+    await db
+      .update(notifications)
+      .set({ isRead: true })
+      .where(
+        and(
+          eq(notifications.userId, userId),
+          eq(notifications.isRead, false)
+        )
+      );
+  }
+
+  // Notification generators
+  async createMeetingReminderNotifications(meetingId: string): Promise<void> {
+    // Get meeting details
+    const meeting = await this.getMeeting(meetingId);
+    if (!meeting) return;
+
+    // Get group members
+    const groupMembers = await db
+      .select()
+      .from(groupMemberships)
+      .innerJoin(users, eq(groupMemberships.userId, users.id))
+      .where(
+        and(
+          eq(groupMemberships.groupId, meeting.groupId),
+          eq(groupMemberships.status, "approved")
+        )
+      );
+
+    // Create notifications for all group members
+    const meetingDate = new Date(meeting.meetingDate);
+    const reminderTime = new Date(meetingDate.getTime() - 24 * 60 * 60 * 1000); // 24 hours before
+
+    for (const member of groupMembers) {
+      await this.createNotification({
+        userId: member.users.id,
+        type: "meeting_reminder",
+        title: "Upcoming Meeting Reminder",
+        message: `Don't forget about tomorrow's meeting: ${meeting.title}`,
+        relatedMeetingId: meetingId,
+        relatedGroupId: meeting.groupId,
+        scheduledFor: reminderTime,
+      });
+    }
+  }
+
+  async createPrayerRequestNotifications(prayerRequestId: string): Promise<void> {
+    // Get prayer request details
+    const prayerRequest = await db
+      .select()
+      .from(prayerRequests)
+      .innerJoin(users, eq(prayerRequests.authorId, users.id))
+      .where(eq(prayerRequests.id, prayerRequestId));
+
+    if (prayerRequest.length === 0) return;
+
+    const prayer = prayerRequest[0];
+
+    // Get group members (excluding the author)
+    const groupMembers = await db
+      .select()
+      .from(groupMemberships)
+      .innerJoin(users, eq(groupMemberships.userId, users.id))
+      .where(
+        and(
+          eq(groupMemberships.groupId, prayer.prayer_requests.groupId),
+          eq(groupMemberships.status, "approved"),
+          sql`${users.id} != ${prayer.prayer_requests.authorId}`
+        )
+      );
+
+    // Create notifications for all group members
+    for (const member of groupMembers) {
+      await this.createNotification({
+        userId: member.users.id,
+        type: "prayer_request",
+        title: "New Prayer Request",
+        message: `${prayer.users.firstName} has shared a new prayer request: ${prayer.prayer_requests.title}`,
+        relatedPrayerRequestId: prayerRequestId,
+        relatedGroupId: prayer.prayer_requests.groupId,
+      });
+    }
   }
 }
 

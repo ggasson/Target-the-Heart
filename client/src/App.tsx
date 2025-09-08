@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/contexts/theme-context";
 import { useAuth } from "@/hooks/useAuth";
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import Landing from "@/pages/landing";
 import Home from "@/pages/home";
 import Groups from "@/pages/groups";
@@ -17,6 +18,29 @@ import MeetingDetailPage from "@/pages/meeting-detail";
 import BottomNavigation from "@/components/bottom-navigation";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import NotFound from "@/pages/not-found";
+
+function NotificationButton() {
+  const { data: unreadNotifications = [] } = useQuery<any[]>({
+    queryKey: ["/api/notifications/unread"],
+  });
+
+  return (
+    <button 
+      className="relative p-2"
+      data-testid="button-notifications"
+    >
+      <i className="fas fa-bell text-muted-foreground"></i>
+      {unreadNotifications.length > 0 && (
+        <span 
+          className="absolute -top-1 -right-1 min-w-[20px] h-5 bg-destructive rounded-full flex items-center justify-center text-xs text-white font-bold px-1"
+          data-testid="notification-count"
+        >
+          {unreadNotifications.length > 99 ? "99+" : unreadNotifications.length}
+        </span>
+      )}
+    </button>
+  );
+}
 
 function MainApp() {
   const [activeTab, setActiveTab] = useState("home");
@@ -55,10 +79,7 @@ function MainApp() {
         </div>
         <div className="flex items-center space-x-3">
           <ThemeSwitcher />
-          <button className="relative p-2">
-            <i className="fas fa-bell text-muted-foreground"></i>
-            <span className="absolute -top-1 -right-1 w-3 h-3 bg-destructive rounded-full"></span>
-          </button>
+          <NotificationButton />
           <button 
             onClick={() => setActiveTab("profile")}
             className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center"
