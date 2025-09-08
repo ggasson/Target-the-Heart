@@ -28,7 +28,10 @@ export default function Home({ onTabChange }: HomeProps) {
     <div className="px-6 py-6">
       {/* Quick Stats */}
       <div className="grid grid-cols-2 gap-4 mb-6">
-        <Card>
+        <Card 
+          className="cursor-pointer hover:bg-muted/50 transition-colors"
+          onClick={() => onTabChange?.("groups")}
+        >
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
               <span className="text-2xl font-bold text-primary" data-testid="text-my-groups-count">
@@ -39,7 +42,10 @@ export default function Home({ onTabChange }: HomeProps) {
             <p className="text-sm text-muted-foreground">My Groups</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card 
+          className="cursor-pointer hover:bg-muted/50 transition-colors"
+          onClick={() => onTabChange?.("prayers")}
+        >
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
               <span className="text-2xl font-bold text-accent" data-testid="text-active-prayers-count">
@@ -71,6 +77,7 @@ export default function Home({ onTabChange }: HomeProps) {
           <Button 
             variant="secondary" 
             className="bg-white/20 hover:bg-white/30 text-white border-0"
+            onClick={() => onTabChange?.("groups")}
             data-testid="button-view-meeting-details"
           >
             View Details
@@ -85,6 +92,7 @@ export default function Home({ onTabChange }: HomeProps) {
           <Button 
             variant="link" 
             className="text-primary text-sm p-0 h-auto"
+            onClick={() => onTabChange?.("prayers")}
             data-testid="link-view-all-prayers"
           >
             View All
