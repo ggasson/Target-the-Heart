@@ -3,6 +3,7 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ThemeProvider } from "@/contexts/theme-context";
 import { useAuth } from "@/hooks/useAuth";
 import { useState } from "react";
 import Landing from "@/pages/landing";
@@ -12,6 +13,7 @@ import Prayers from "@/pages/prayers";
 import Chat from "@/pages/chat";
 import Profile from "@/pages/profile";
 import BottomNavigation from "@/components/bottom-navigation";
+import { ThemeSwitcher } from "@/components/theme-switcher";
 import NotFound from "@/pages/not-found";
 
 function MainApp() {
@@ -46,6 +48,7 @@ function MainApp() {
           </div>
         </div>
         <div className="flex items-center space-x-3">
+          <ThemeSwitcher />
           <button className="relative p-2">
             <i className="fas fa-bell text-muted-foreground"></i>
             <span className="absolute -top-1 -right-1 w-3 h-3 bg-destructive rounded-full"></span>
@@ -96,10 +99,12 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Router />
-      </TooltipProvider>
+      <ThemeProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Router />
+        </TooltipProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }
