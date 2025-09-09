@@ -19,7 +19,7 @@ export default function Prayers() {
     queryKey: ["/api/groups/my"],
   });
 
-  const { data: allPrayers = [] } = useQuery({
+  const { data: allPrayers = [] } = useQuery<any[]>({
     queryKey: ["/api/prayers/my"],
   });
 

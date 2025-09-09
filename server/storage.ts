@@ -373,7 +373,7 @@ export class DatabaseStorage implements IStorage {
       );
   }
 
-  async updatePrayerStatus(id: string, status: string): Promise<void> {
+  async updatePrayerStatus(id: string, status: "active" | "answered" | "closed"): Promise<void> {
     await db
       .update(prayerRequests)
       .set({ status })

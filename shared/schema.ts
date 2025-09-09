@@ -9,6 +9,7 @@ import {
   boolean,
   decimal,
   pgEnum,
+  unique,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
@@ -195,7 +196,10 @@ export const meetingRsvps = pgTable("meeting_rsvps", {
   guestCount: varchar("guest_count").default("0"), // Number of additional people they're bringing
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  // Unique constraint to ensure one RSVP per user per meeting
+  unique().on(table.meetingId, table.userId),
+]);
 
 // Group invitations
 export const groupInvitations = pgTable("group_invitations", {
