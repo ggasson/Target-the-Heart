@@ -261,6 +261,19 @@ export default function MeetingModal({ open, onOpenChange, groupId, meeting }: M
             />
           </div>
 
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="isRecurring"
+              checked={isRecurring}
+              onCheckedChange={(checked) => {
+                setIsRecurring(checked);
+                form.setValue("isRecurring", checked);
+              }}
+              data-testid="switch-recurring"
+            />
+            <Label htmlFor="isRecurring">Recurring Meeting</Label>
+          </div>
+
           {!isRecurring && (
             <div>
               <Label htmlFor="meetingDate">Date & Time *</Label>
@@ -277,50 +290,6 @@ export default function MeetingModal({ open, onOpenChange, groupId, meeting }: M
               )}
             </div>
           )}
-
-          <div>
-            <Label htmlFor="venue">Venue</Label>
-            <Input
-              id="venue"
-              {...form.register("venue")}
-              placeholder="e.g., Community Center"
-              data-testid="input-meeting-venue"
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="venueAddress">Venue Address</Label>
-            <Textarea
-              id="venueAddress"
-              {...form.register("venueAddress")}
-              placeholder="Full address of the meeting location"
-              data-testid="textarea-meeting-address"
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="maxAttendees">Max Attendees</Label>
-            <Input
-              id="maxAttendees"
-              type="number"
-              {...form.register("maxAttendees")}
-              placeholder="e.g., 20"
-              data-testid="input-max-attendees"
-            />
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Switch
-              id="isRecurring"
-              checked={isRecurring}
-              onCheckedChange={(checked) => {
-                setIsRecurring(checked);
-                form.setValue("isRecurring", checked);
-              }}
-              data-testid="switch-recurring"
-            />
-            <Label htmlFor="isRecurring">Recurring Meeting</Label>
-          </div>
 
           {isRecurring && (
             <div className="space-y-4 p-4 border rounded-lg bg-muted/50">
@@ -372,6 +341,37 @@ export default function MeetingModal({ open, onOpenChange, groupId, meeting }: M
               </div>
             </div>
           )}
+
+          <div>
+            <Label htmlFor="venue">Venue</Label>
+            <Input
+              id="venue"
+              {...form.register("venue")}
+              placeholder="e.g., Community Center"
+              data-testid="input-meeting-venue"
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="venueAddress">Venue Address</Label>
+            <Textarea
+              id="venueAddress"
+              {...form.register("venueAddress")}
+              placeholder="Full address of the meeting location"
+              data-testid="textarea-meeting-address"
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="maxAttendees">Max Attendees</Label>
+            <Input
+              id="maxAttendees"
+              type="number"
+              {...form.register("maxAttendees")}
+              placeholder="e.g., 20"
+              data-testid="input-max-attendees"
+            />
+          </div>
 
           <div className="flex space-x-2 pt-4">
             <Button
