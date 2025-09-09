@@ -10,7 +10,6 @@ import { useQuery } from "@tanstack/react-query";
 import Landing from "@/pages/landing";
 import Home from "@/pages/home";
 import Groups from "@/pages/groups";
-import Calendar from "@/pages/calendar";
 import Prayers from "@/pages/prayers";
 import Chat from "@/pages/chat";
 import Profile from "@/pages/profile";
@@ -52,8 +51,6 @@ function MainApp() {
         return <Home onTabChange={setActiveTab} />;
       case "groups":
         return <Groups />;
-      case "calendar":
-        return <Calendar />;
       case "prayers":
         return <Prayers />;
       case "chat":
