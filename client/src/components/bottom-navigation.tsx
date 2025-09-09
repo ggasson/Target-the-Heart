@@ -22,6 +22,11 @@ export default function BottomNavigation({ activeTab, onTabChange }: BottomNavig
       label: "Groups",
     },
     {
+      id: "calendar",
+      icon: "fas fa-calendar",
+      label: "Calendar",
+    },
+    {
       id: "prayers",
       icon: "fas fa-praying-hands",
       label: "Prayers",
