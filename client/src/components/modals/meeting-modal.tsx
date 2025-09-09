@@ -10,8 +10,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { format } from "date-fns";
 import type { Meeting } from "@shared/schema";
 
 const meetingSchema = z.object({
@@ -53,6 +56,8 @@ export default function MeetingModal({ open, onOpenChange, groupId, meeting }: M
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isRecurring, setIsRecurring] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date>();
+  const [selectedTime, setSelectedTime] = useState("17:45");
 
   const form = useForm<MeetingFormData>({
     resolver: zodResolver(meetingSchema),
@@ -74,6 +79,8 @@ export default function MeetingModal({ open, onOpenChange, groupId, meeting }: M
   useEffect(() => {
     if (meeting) {
       const meetingDate = new Date(meeting.meetingDate);
+      setSelectedDate(meetingDate);
+      setSelectedTime(format(meetingDate, "HH:mm"));
       form.reset({
         title: meeting.title,
         description: meeting.description || "",
@@ -89,6 +96,8 @@ export default function MeetingModal({ open, onOpenChange, groupId, meeting }: M
       });
       setIsRecurring(meeting.isRecurring || false);
     } else {
+      setSelectedDate(undefined);
+      setSelectedTime("17:45");
       form.reset({
         title: "",
         description: "",
@@ -275,16 +284,63 @@ export default function MeetingModal({ open, onOpenChange, groupId, meeting }: M
           </div>
 
           {!isRecurring && (
-            <div>
-              <Label htmlFor="meetingDate">Date & Time *</Label>
-              <Input
-                id="meetingDate"
-                type="datetime-local"
-                {...form.register("meetingDate")}
-                className="block w-full"
-                min={new Date().toISOString().slice(0, 16)}
-                data-testid="input-meeting-date"
-              />
+            <div className="space-y-4">
+              <div>
+                <Label>Date *</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start text-left font-normal"
+                      data-testid="button-select-date"
+                    >
+                      <i className="fas fa-calendar mr-2"></i>
+                      {selectedDate ? format(selectedDate, "PPP") : "Pick a date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={selectedDate}
+                      onSelect={(date) => {
+                        setSelectedDate(date);
+                        if (date) {
+                          // Combine date and time to update form
+                          const [hours, minutes] = selectedTime.split(':');
+                          const newDateTime = new Date(date);
+                          newDateTime.setHours(parseInt(hours), parseInt(minutes));
+                          form.setValue("meetingDate", newDateTime.toISOString().slice(0, 16));
+                        }
+                      }}
+                      disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                      initialFocus
+                      data-testid="calendar-picker"
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              
+              <div>
+                <Label htmlFor="meetingTime">Time *</Label>
+                <Input
+                  id="meetingTime"
+                  type="time"
+                  value={selectedTime}
+                  onChange={(e) => {
+                    setSelectedTime(e.target.value);
+                    if (selectedDate) {
+                      // Combine date and time to update form
+                      const [hours, minutes] = e.target.value.split(':');
+                      const newDateTime = new Date(selectedDate);
+                      newDateTime.setHours(parseInt(hours), parseInt(minutes));
+                      form.setValue("meetingDate", newDateTime.toISOString().slice(0, 16));
+                    }
+                  }}
+                  className="block w-full"
+                  data-testid="input-meeting-time"
+                />
+              </div>
+              
               {form.formState.errors.meetingDate && (
                 <p className="text-sm text-destructive mt-1">
                   {form.formState.errors.meetingDate.message}
