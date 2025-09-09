@@ -373,6 +373,25 @@ export class DatabaseStorage implements IStorage {
       );
   }
 
+  async updatePrayerStatus(id: string, status: string): Promise<void> {
+    await db
+      .update(prayerRequests)
+      .set({ status })
+      .where(eq(prayerRequests.id, id));
+  }
+
+  async deletePrayerRequest(id: string): Promise<void> {
+    // Delete all related responses first
+    await db
+      .delete(prayerResponses)
+      .where(eq(prayerResponses.prayerRequestId, id));
+    
+    // Then delete the prayer request
+    await db
+      .delete(prayerRequests)
+      .where(eq(prayerRequests.id, id));
+  }
+
   // Chat operations
   async createChatMessage(message: InsertChatMessage): Promise<ChatMessage> {
     const [newMessage] = await db

@@ -275,6 +275,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update prayer status (mark as answered)
+  app.put('/api/prayers/:id/status', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { status } = req.body;
+      
+      // Check if user is the author of the prayer
+      const prayer = await storage.getPrayerRequest(req.params.id);
+      if (!prayer || prayer.authorId !== userId) {
+        return res.status(403).json({ message: "Only the prayer author can update the status" });
+      }
+      
+      await storage.updatePrayerStatus(req.params.id, status);
+      res.json({ message: "Prayer status updated" });
+    } catch (error) {
+      console.error("Error updating prayer status:", error);
+      res.status(500).json({ message: "Failed to update prayer status" });
+    }
+  });
+
+  // Delete prayer
+  app.delete('/api/prayers/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // Check if user is the author of the prayer
+      const prayer = await storage.getPrayerRequest(req.params.id);
+      if (!prayer || prayer.authorId !== userId) {
+        return res.status(403).json({ message: "Only the prayer author can delete the prayer" });
+      }
+      
+      await storage.deletePrayerRequest(req.params.id);
+      res.json({ message: "Prayer deleted" });
+    } catch (error) {
+      console.error("Error deleting prayer:", error);
+      res.status(500).json({ message: "Failed to delete prayer" });
+    }
+  });
+
   // Chat routes
   app.get('/api/groups/:id/messages', isAuthenticated, async (req: any, res) => {
     try {
