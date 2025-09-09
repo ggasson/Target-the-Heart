@@ -281,6 +281,8 @@ export default function MeetingModal({ open, onOpenChange, groupId, meeting }: M
                 id="meetingDate"
                 type="datetime-local"
                 {...form.register("meetingDate")}
+                className="block w-full"
+                min={new Date().toISOString().slice(0, 16)}
                 data-testid="input-meeting-date"
               />
               {form.formState.errors.meetingDate && (
