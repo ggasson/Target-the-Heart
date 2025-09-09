@@ -111,6 +111,53 @@ export default function MeetingDetailPage() {
 
   const currentStatus = getCurrentRsvpStatus();
 
+  const exportToCalendar = () => {
+    if (!meeting) return;
+    
+    const startDate = new Date(meeting.meetingDate);
+    const endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000); // 2 hours later
+    
+    const formatDate = (date: Date) => {
+      return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    };
+
+    const event = {
+      title: meeting.title,
+      description: meeting.description || '',
+      location: meeting.venue ? `${meeting.venue}${meeting.venueAddress ? `, ${meeting.venueAddress}` : ''}` : '',
+      start: formatDate(startDate),
+      end: formatDate(endDate),
+    };
+
+    const icsContent = `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Pray Connect//Calendar//EN
+BEGIN:VEVENT
+UID:${meeting.id}@prayconnect.app
+DTSTART:${event.start}
+DTEND:${event.end}
+SUMMARY:${event.title}
+DESCRIPTION:${event.description}
+LOCATION:${event.location}
+END:VEVENT
+END:VCALENDAR`;
+
+    const blob = new Blob([icsContent], { type: 'text/calendar' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${meeting.title.replace(/[^a-zA-Z0-9]/g, '_')}.ics`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    toast({
+      title: "Calendar Event Downloaded",
+      description: "The event has been saved as an .ics file",
+    });
+  };
+
   return (
     <div className="max-w-md mx-auto bg-card shadow-lg min-h-screen">
       {/* Header */}
@@ -133,9 +180,20 @@ export default function MeetingDetailPage() {
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <span data-testid="text-meeting-title">{meeting.title}</span>
-              <Badge variant={meeting.status === "scheduled" ? "default" : "secondary"}>
-                {meeting.status}
-              </Badge>
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={exportToCalendar}
+                  data-testid="button-add-to-calendar"
+                >
+                  <i className="fas fa-calendar-plus mr-2"></i>
+                  Add to Calendar
+                </Button>
+                <Badge variant={meeting.status === "scheduled" ? "default" : "secondary"}>
+                  {meeting.status}
+                </Badge>
+              </div>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
