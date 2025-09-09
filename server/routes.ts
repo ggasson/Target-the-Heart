@@ -422,6 +422,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all meetings for user's groups
+  app.get('/api/meetings/all', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const meetings = await storage.getAllUserMeetings(userId);
+      res.json(meetings);
+    } catch (error) {
+      console.error("Error fetching all meetings:", error);
+      res.status(500).json({ message: "Failed to fetch all meetings" });
+    }
+  });
+
   // Get meeting details by ID
   app.get('/api/meetings/:id', isAuthenticated, async (req: any, res) => {
     try {

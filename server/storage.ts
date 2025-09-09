@@ -449,6 +449,33 @@ export class DatabaseStorage implements IStorage {
       .orderBy(asc(meetings.meetingDate));
   }
 
+  async getAllUserMeetings(userId: string): Promise<(Meeting & { group: { id: string; name: string } })[]> {
+    // Get all meetings from groups the user is a member of
+    const userMeetings = await db
+      .select({
+        meeting: meetings,
+        group: {
+          id: groups.id,
+          name: groups.name,
+        },
+      })
+      .from(meetings)
+      .innerJoin(groups, eq(meetings.groupId, groups.id))
+      .innerJoin(groupMemberships, eq(groups.id, groupMemberships.groupId))
+      .where(
+        and(
+          eq(groupMemberships.userId, userId),
+          eq(groupMemberships.status, "approved")
+        )
+      )
+      .orderBy(asc(meetings.meetingDate));
+
+    return userMeetings.map(result => ({
+      ...result.meeting,
+      group: result.group,
+    }));
+  }
+
   async deleteMeeting(id: string): Promise<void> {
     await db.delete(meetings).where(eq(meetings.id, id));
   }
