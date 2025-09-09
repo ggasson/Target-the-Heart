@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import PrayerModal from "@/components/modals/prayer-modal";
 import PrayerCard from "@/components/prayer-card";
@@ -11,6 +12,7 @@ export default function Prayers() {
   const [selectedTab, setSelectedTab] = useState("all");
   const [showPrayerModal, setShowPrayerModal] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
 
   const { data: myGroups = [] } = useQuery({
@@ -45,10 +47,60 @@ export default function Prayers() {
     prayerResponseMutation.mutate({ prayerId, action });
   };
 
+  const markAnsweredMutation = useMutation({
+    mutationFn: async (prayerId: string) => {
+      await apiRequest("PUT", `/api/prayers/${prayerId}/status`, { status: "answered" });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Prayer Marked as Answered",
+        description: "Praise God! Your prayer has been marked as answered.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/prayers/my"] });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to mark prayer as answered. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deletePrayerMutation = useMutation({
+    mutationFn: async (prayerId: string) => {
+      await apiRequest("DELETE", `/api/prayers/${prayerId}`);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Prayer Deleted",
+        description: "Your prayer has been removed.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/prayers/my"] });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to delete prayer. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleMarkAnswered = (prayerId: string) => {
+    markAnsweredMutation.mutate(prayerId);
+  };
+
+  const handleDeletePrayer = (prayerId: string) => {
+    if (window.confirm("Are you sure you want to delete this prayer? This action cannot be undone.")) {
+      deletePrayerMutation.mutate(prayerId);
+    }
+  };
+
   const filteredPrayers = allPrayers.filter((prayer) => {
     switch (selectedTab) {
       case "my":
-        return prayer.authorId === prayer.authorId; // This would need current user ID
+        return prayer.authorId === user?.id;
       case "answered":
         return prayer.status === "answered";
       default:
@@ -111,7 +163,10 @@ export default function Prayers() {
             <PrayerCard
               key={prayer.id}
               prayer={prayer}
+              currentUserId={user?.id}
               onPrayerResponse={handlePrayerResponse}
+              onMarkAnswered={handleMarkAnswered}
+              onDeletePrayer={handleDeletePrayer}
             />
           ))
         )}
