@@ -288,7 +288,7 @@ export default function GroupsMap({ onGroupSelect, selectedGroupId }: GroupsMapP
                     </div>
                     
                     <div className="text-right">
-                      {'distance' in group && (
+                      {'distance' in group && typeof group.distance === 'number' && (
                         <div className="text-sm font-medium text-primary">
                           {group.distance.toFixed(1)} mi
                         </div>
