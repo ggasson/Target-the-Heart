@@ -29,7 +29,7 @@ function NotificationButton() {
       className="relative p-2"
       data-testid="button-notifications"
     >
-      <img src="/target-symbol.png" alt="Target Symbol" className="w-4 h-4" />
+      <i className="fas fa-bell text-muted-foreground"></i>
       {unreadNotifications.length > 0 && (
         <span 
           className="absolute -top-1 -right-1 min-w-[20px] h-5 bg-destructive rounded-full flex items-center justify-center text-xs text-white font-bold px-1"
