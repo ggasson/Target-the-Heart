@@ -285,7 +285,7 @@ export default function Home({ onTabChange }: HomeProps) {
             <CardContent className="p-4">
               <div className="flex items-start space-x-3">
                 <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
-                  <img src="/target-the-heart-logo.png" alt="Target Symbol" className="w-4 h-4" />
+                  <img src="/target-symbol.png" alt="Target Symbol" className="w-4 h-4" />
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center justify-between mb-1">
@@ -315,7 +315,7 @@ export default function Home({ onTabChange }: HomeProps) {
         {recentPrayers.length === 0 && (
           <Card>
             <CardContent className="p-6 text-center">
-              <img src="/target-the-heart-logo.png" alt="Target Symbol" className="w-16 h-16 mx-auto mb-4 opacity-60" />
+              <img src="/target-symbol.png" alt="Target Symbol" className="w-16 h-16 mx-auto mb-4 opacity-60" />
               <p className="text-muted-foreground">No prayer requests yet.</p>
               <p className="text-sm text-muted-foreground">Share your first prayer request with your groups.</p>
             </CardContent>
