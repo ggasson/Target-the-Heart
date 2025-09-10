@@ -5,7 +5,7 @@ export default function Landing() {
     <div className="min-h-screen gradient-bg flex flex-col items-center justify-center text-center px-6">
       <div className="glass-effect rounded-3xl p-8 max-w-sm w-full">
         <div className="mb-8">
-          <div className="w-24 h-24 mx-auto mb-6 rounded-lg overflow-hidden bg-black/20">
+          <div className="w-24 h-24 mx-auto mb-6 rounded-lg overflow-hidden bg-black">
             <img 
               src="/target-the-heart-logo.png" 
               alt="Target The Heart Logo" 
