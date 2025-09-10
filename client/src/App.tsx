@@ -67,13 +67,13 @@ function MainApp() {
         <div className="flex items-center space-x-3">
           <div className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center bg-black">
             <img 
-              src="/pray-connect-logo.png" 
-              alt="Pray Connect Logo" 
+              src="/target-the-heart-logo.png" 
+              alt="Target The Heart Logo" 
               className="w-full h-full object-contain"
             />
           </div>
           <div>
-            <h1 className="font-semibold text-foreground">Pray Connect</h1>
+            <h1 className="font-semibold text-foreground">Target The Heart</h1>
             <p className="text-xs text-muted-foreground">Your spiritual community</p>
           </div>
         </div>

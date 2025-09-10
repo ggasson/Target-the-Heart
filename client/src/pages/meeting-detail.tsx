@@ -131,9 +131,9 @@ export default function MeetingDetailPage() {
 
     const icsContent = `BEGIN:VCALENDAR
 VERSION:2.0
-PRODID:-//Pray Connect//Calendar//EN
+PRODID:-//Target The Heart//Calendar//EN
 BEGIN:VEVENT
-UID:${meeting.id}@prayconnect.app
+UID:${meeting.id}@targettheheart.app
 DTSTART:${event.start}
 DTEND:${event.end}
 SUMMARY:${event.title}

@@ -7,12 +7,12 @@ export default function Landing() {
         <div className="mb-8">
           <div className="w-24 h-24 mx-auto mb-6 rounded-lg overflow-hidden bg-black/20">
             <img 
-              src="/pray-connect-logo.png" 
-              alt="Pray Connect Logo" 
+              src="/target-the-heart-logo.png" 
+              alt="Target The Heart Logo" 
               className="w-full h-full object-contain"
             />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">Pray Connect</h1>
+          <h1 className="text-3xl font-bold text-white mb-2">Target The Heart</h1>
           <p className="text-white/80 text-lg">Unite in faith, pray in community</p>
         </div>
         
