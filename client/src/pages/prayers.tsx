@@ -149,7 +149,7 @@ export default function Prayers() {
       <div className="space-y-4">
         {filteredPrayers.length === 0 ? (
           <div className="text-center py-12">
-            <i className="fas fa-heart text-4xl text-muted-foreground mb-4"></i>
+            <i className="fas fa-hands-praying text-4xl text-muted-foreground mb-4"></i>
             <p className="text-muted-foreground">No prayer requests found.</p>
             <p className="text-sm text-muted-foreground">
               {selectedTab === "my" 

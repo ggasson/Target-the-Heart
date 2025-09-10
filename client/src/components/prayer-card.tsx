@@ -27,7 +27,7 @@ export default function PrayerCard({ prayer, currentUserId, onPrayerResponse, on
       case "health_healing":
         return "fas fa-heartbeat";
       case "family_relationships":
-        return "fas fa-heart";
+        return "fas fa-users";
       case "work_career":
         return "fas fa-briefcase";
       case "spiritual_growth":
@@ -35,7 +35,7 @@ export default function PrayerCard({ prayer, currentUserId, onPrayerResponse, on
       case "financial_provision":
         return "fas fa-dollar-sign";
       default:
-        return "fas fa-heart";
+        return "fas fa-hands-praying";
     }
   };
 
@@ -83,7 +83,7 @@ export default function PrayerCard({ prayer, currentUserId, onPrayerResponse, on
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4 text-sm">
                 <button className="flex items-center space-x-1 text-primary hover:text-primary/80">
-                  <i className={`fas fa-heart text-xs`}></i>
+                  <i className={`fas fa-hands-praying text-xs`}></i>
                   <span data-testid={`text-prayer-responses-${prayer.id}`}>
                     {prayer.responses?.length || 0}
                   </span>
