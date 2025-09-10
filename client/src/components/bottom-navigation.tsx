@@ -23,7 +23,7 @@ export default function BottomNavigation({ activeTab, onTabChange }: BottomNavig
     },
     {
       id: "prayers",
-      icon: "fas fa-praying-hands",
+      icon: "fas fa-heart",
       label: "Prayers",
     },
     {
