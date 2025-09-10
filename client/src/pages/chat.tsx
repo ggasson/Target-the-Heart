@@ -83,7 +83,7 @@ export default function Chat() {
       <div className="bg-card px-6 py-4 border-b border-border flex items-center justify-between flex-shrink-0">
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-            <i className="fas fa-church text-primary"></i>
+            <i className="fas fa-heart text-primary"></i>
           </div>
           <div>
             <h3 className="font-semibold text-foreground" data-testid="text-group-name">
