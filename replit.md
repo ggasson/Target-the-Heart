@@ -1,6 +1,6 @@
 # Overview
 
-PrayTogether is a mobile-first web application that connects people in prayer communities. The application allows users to create and join prayer groups, share prayer requests, participate in group chats, and build spiritual connections within their local communities. Built as a React-based single-page application with a Node.js/Express backend, it uses location-based features to help users find nearby prayer groups and facilitates meaningful spiritual interactions through a clean, intuitive mobile interface.
+Target The Heart is a mobile-first web application that connects people in prayer communities. The application allows users to create and join prayer groups, share prayer requests, participate in group chats, and build spiritual connections within their local communities. Built as a React-based single-page application with a Node.js/Express backend, it uses location-based features to help users find nearby prayer groups and facilitates meaningful spiritual interactions through a clean, intuitive mobile interface.
 
 # User Preferences
 
