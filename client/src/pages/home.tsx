@@ -187,7 +187,7 @@ export default function Home({ onTabChange }: HomeProps) {
               <span className="text-2xl font-bold text-accent" data-testid="text-active-prayers-count">
                 {recentPrayers.filter(p => p.status === 'active').length}
               </span>
-              <img src="/target-symbol.png" alt="Target Symbol" className="w-5 h-5" />
+              <img src="/target-symbol.png" alt="Target Symbol" className="w-10 h-10" />
             </div>
             <p className="text-sm text-muted-foreground">Active Prayers</p>
           </CardContent>
