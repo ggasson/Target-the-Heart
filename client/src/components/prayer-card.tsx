@@ -35,7 +35,7 @@ export default function PrayerCard({ prayer, currentUserId, onPrayerResponse, on
       case "financial_provision":
         return "fas fa-dollar-sign";
       default:
-        return "fas fa-hands-praying";
+        return "target-symbol";
     }
   };
 
@@ -50,9 +50,13 @@ export default function PrayerCard({ prayer, currentUserId, onPrayerResponse, on
           <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
             isAnswered ? "bg-accent/10" : "bg-primary/10"
           }`}>
-            <i className={`${getCategoryIcon(prayer.category)} text-sm ${
-              isAnswered ? "text-accent" : "text-primary"
-            }`}></i>
+            {getCategoryIcon(prayer.category) === "target-symbol" ? (
+              <img src="/target-the-heart-logo.png" alt="Target Symbol" className="w-4 h-4" />
+            ) : (
+              <i className={`${getCategoryIcon(prayer.category)} text-sm ${
+                isAnswered ? "text-accent" : "text-primary"
+              }`}></i>
+            )}
           </div>
           <div className="flex-1">
             <div className="flex items-center justify-between mb-2">
@@ -83,7 +87,7 @@ export default function PrayerCard({ prayer, currentUserId, onPrayerResponse, on
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4 text-sm">
                 <button className="flex items-center space-x-1 text-primary hover:text-primary/80">
-                  <i className={`fas fa-hands-praying text-xs`}></i>
+                  <img src="/target-the-heart-logo.png" alt="Target Symbol" className="w-3 h-3" />
                   <span data-testid={`text-prayer-responses-${prayer.id}`}>
                     {prayer.responses?.length || 0}
                   </span>
