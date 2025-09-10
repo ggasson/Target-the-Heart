@@ -50,7 +50,7 @@ export default function BottomNavigation({ activeTab, onTabChange }: BottomNavig
             data-testid={`nav-${tab.id}`}
           >
             {tab.icon === "target-symbol" ? (
-              <img src="/target-symbol.png" alt="Target Symbol" className="w-4 h-4" />
+              <img src="/target-symbol.png" alt="Target Symbol" className="w-5 h-5" />
             ) : (
               <i className={`${tab.icon} text-lg`}></i>
             )}
