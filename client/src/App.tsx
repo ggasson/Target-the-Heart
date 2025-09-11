@@ -92,7 +92,7 @@ function MainApp() {
 
       {/* Main Content */}
       <div className="pb-20">
-        {activeTab === "profile" ? <Profile /> : renderActiveTab()}
+        {activeTab === "profile" ? <Profile onBack={() => setActiveTab("home")} /> : renderActiveTab()}
       </div>
 
       {/* Bottom Navigation */}
