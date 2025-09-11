@@ -6,6 +6,15 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import type { Group } from "@shared/schema";
+import L from "leaflet";
+
+// Fix for default markers in Leaflet
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
 
 interface GroupsMapProps {
   onGroupSelect?: (group: Group) => void;
@@ -25,6 +34,9 @@ export default function GroupsMap({ onGroupSelect, selectedGroupId }: GroupsMapP
   const [mapViewCenter, setMapViewCenter] = useState({ lat: 39.8283, lng: -98.5795 }); // Center of US
   const [zoomLevel, setZoomLevel] = useState(4);
   const mapRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<L.Map | null>(null);
+  const markersRef = useRef<{ [key: string]: L.Marker }>({});
+  const userMarkerRef = useRef<L.Marker | null>(null);
 
   // Fetch all public groups with location data
   const { data: groups = [] } = useQuery<Group[]>({
@@ -37,20 +49,156 @@ export default function GroupsMap({ onGroupSelect, selectedGroupId }: GroupsMapP
     Number(group.latitude) !== 0 && Number(group.longitude) !== 0
   );
 
+  // Initialize the map
   useEffect(() => {
-    // If user has location in profile, use it
+    if (mapRef.current && !mapInstanceRef.current) {
+      mapInstanceRef.current = L.map(mapRef.current).setView(
+        [mapViewCenter.lat, mapViewCenter.lng],
+        zoomLevel
+      );
+
+      // Add OpenStreetMap tiles
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 19,
+      }).addTo(mapInstanceRef.current);
+    }
+
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+    };
+  }, []);
+
+  // Update map view when center or zoom changes
+  useEffect(() => {
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.setView([mapViewCenter.lat, mapViewCenter.lng], zoomLevel);
+    }
+  }, [mapViewCenter, zoomLevel]);
+
+  // Load user location from profile
+  useEffect(() => {
     if ((user as any)?.latitude && (user as any)?.longitude) {
-      setUserLocation({
+      const location = {
         latitude: Number((user as any).latitude),
         longitude: Number((user as any).longitude),
-      });
+      };
+      setUserLocation(location);
       setMapViewCenter({
-        lat: Number((user as any).latitude),
-        lng: Number((user as any).longitude),
+        lat: location.latitude,
+        lng: location.longitude,
       });
       setZoomLevel(10);
     }
   }, [user]);
+
+  // Update user marker when location changes
+  useEffect(() => {
+    if (mapInstanceRef.current && userLocation) {
+      // Remove existing user marker
+      if (userMarkerRef.current) {
+        mapInstanceRef.current.removeLayer(userMarkerRef.current);
+      }
+
+      // Create blue user location icon
+      const userIcon = L.divIcon({
+        className: 'custom-user-marker',
+        html: '<div style="width: 20px; height: 20px; background: #3b82f6; border: 3px solid white; border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,0.3);"></div>',
+        iconSize: [20, 20],
+        iconAnchor: [10, 10],
+      });
+
+      // Add user marker
+      userMarkerRef.current = L.marker([userLocation.latitude, userLocation.longitude], {
+        icon: userIcon,
+      })
+        .addTo(mapInstanceRef.current)
+        .bindPopup('Your Location');
+    }
+  }, [userLocation]);
+
+  // Update group markers when groups data changes
+  useEffect(() => {
+    if (mapInstanceRef.current && groupsWithLocation.length > 0) {
+      // Clear existing markers
+      Object.values(markersRef.current).forEach(marker => {
+        mapInstanceRef.current!.removeLayer(marker);
+      });
+      markersRef.current = {};
+
+      // Add markers for each group
+      groupsWithLocation.forEach(group => {
+        if (group.latitude && group.longitude) {
+          // Create custom icon for prayer groups
+          const groupIcon = L.divIcon({
+            className: 'custom-group-marker',
+            html: `<div style="width: 24px; height: 24px; background: hsl(var(--primary)); border: 2px solid white; border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; color: white; font-size: 12px;">⛪</div>`,
+            iconSize: [24, 24],
+            iconAnchor: [12, 12],
+          });
+
+          // Create popup content safely using DOM elements
+          const popupContainer = document.createElement('div');
+          popupContainer.style.minWidth = '200px';
+          
+          const title = document.createElement('h3');
+          title.style.cssText = 'margin: 0 0 8px 0; font-weight: bold;';
+          title.textContent = group.name;
+          popupContainer.appendChild(title);
+          
+          if (group.description) {
+            const description = document.createElement('p');
+            description.style.cssText = 'margin: 0 0 8px 0; font-size: 14px; color: #666;';
+            description.textContent = group.description;
+            popupContainer.appendChild(description);
+          }
+          
+          if (group.meetingDay && group.meetingTime) {
+            const meetingTime = document.createElement('p');
+            meetingTime.style.cssText = 'margin: 0 0 4px 0; font-size: 12px;';
+            const meetingBold = document.createElement('strong');
+            meetingBold.textContent = `📅 ${group.meetingDay} ${group.meetingTime}`;
+            meetingTime.appendChild(meetingBold);
+            popupContainer.appendChild(meetingTime);
+          }
+          
+          if (group.meetingLocation) {
+            const location = document.createElement('p');
+            location.style.cssText = 'margin: 0; font-size: 12px;';
+            const locationBold = document.createElement('strong');
+            locationBold.textContent = `📍 ${group.meetingLocation}`;
+            location.appendChild(locationBold);
+            popupContainer.appendChild(location);
+          }
+
+          const marker = L.marker([Number(group.latitude), Number(group.longitude)], {
+            icon: groupIcon,
+          })
+            .addTo(mapInstanceRef.current!)
+            .bindPopup(popupContainer);
+
+          // Add click event to select group
+          marker.on('click', () => {
+            onGroupSelect?.(group);
+          });
+
+          markersRef.current[group.id] = marker;
+        }
+      });
+    }
+  }, [groupsWithLocation, onGroupSelect]);
+
+  // Highlight selected group
+  useEffect(() => {
+    Object.entries(markersRef.current).forEach(([groupId, marker]) => {
+      if (groupId === selectedGroupId) {
+        marker.openPopup();
+      }
+    });
+  }, [selectedGroupId]);
 
   const getCurrentLocation = () => {
     setIsGettingLocation(true);
@@ -149,6 +297,12 @@ export default function GroupsMap({ onGroupSelect, selectedGroupId }: GroupsMapP
       });
       setZoomLevel(14);
       onGroupSelect?.(group);
+      
+      // Open the popup for this group
+      const marker = markersRef.current[group.id];
+      if (marker) {
+        marker.openPopup();
+      }
     }
   };
 
@@ -170,64 +324,14 @@ export default function GroupsMap({ onGroupSelect, selectedGroupId }: GroupsMapP
         </Button>
       </div>
 
-      {/* Simple Map Visualization */}
+      {/* Interactive OpenStreetMap */}
       <Card className="relative">
         <CardContent className="p-0">
           <div 
             ref={mapRef}
-            className="h-96 bg-gradient-to-br from-blue-50 to-green-50 dark:from-blue-950 dark:to-green-950 relative overflow-hidden rounded-lg"
+            className="h-96 rounded-lg overflow-hidden"
             data-testid="groups-map-container"
-          >
-            {/* Map Background Pattern */}
-            <div className="absolute inset-0 opacity-10">
-              <svg className="w-full h-full" viewBox="0 0 100 100">
-                <defs>
-                  <pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse">
-                    <path d="M 10 0 L 0 0 0 10" fill="none" stroke="currentColor" strokeWidth="0.5"/>
-                  </pattern>
-                </defs>
-                <rect width="100" height="100" fill="url(#grid)" />
-              </svg>
-            </div>
-
-            {/* Center Crosshairs */}
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-muted-foreground">
-              <i className="fas fa-crosshairs text-2xl"></i>
-            </div>
-
-            {/* User Location Indicator */}
-            {userLocation && (
-              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-                <div className="w-3 h-3 bg-blue-500 rounded-full border-2 border-white shadow-lg"></div>
-                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-6 h-6 bg-blue-500 rounded-full opacity-30 animate-ping"></div>
-              </div>
-            )}
-
-            {/* Map Legend */}
-            <div className="absolute top-4 left-4 bg-white dark:bg-gray-800 rounded-lg p-3 shadow-lg">
-              <div className="text-sm font-medium mb-2">Legend</div>
-              <div className="space-y-1 text-xs">
-                {userLocation && (
-                  <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                    <span>Your Location</span>
-                  </div>
-                )}
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-primary rounded-full"></div>
-                  <span>Prayer Groups</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Map Info */}
-            <div className="absolute bottom-4 left-4 bg-white dark:bg-gray-800 rounded-lg p-2 shadow-lg">
-              <div className="text-xs text-muted-foreground">
-                <div>Center: {mapViewCenter.lat.toFixed(4)}, {mapViewCenter.lng.toFixed(4)}</div>
-                <div>Zoom: {zoomLevel}</div>
-              </div>
-            </div>
-          </div>
+          />
         </CardContent>
       </Card>
 
