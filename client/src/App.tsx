@@ -85,7 +85,7 @@ function MainApp() {
             className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center"
             data-testid="button-profile"
           >
-            <img src="/target-symbol.png" alt="Target Symbol" className="w-4 h-4" />
+            <i className="fas fa-user text-muted-foreground"></i>
           </button>
         </div>
       </header>
