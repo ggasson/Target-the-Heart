@@ -6,6 +6,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -46,6 +57,7 @@ export default function ManageGroupModal({ open, onOpenChange, group }: ManageGr
   const [groupRules, setGroupRules] = useState("");
   const [showMeetingModal, setShowMeetingModal] = useState(false);
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -101,6 +113,28 @@ export default function ManageGroupModal({ open, onOpenChange, group }: ManageGr
       toast({
         title: "Error",
         description: "Failed to update group. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteGroupMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("DELETE", `/api/groups/${group?.id}`);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Group deleted",
+        description: "Your group has been permanently deleted.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/groups/my"] });
+      onOpenChange(false);
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to delete group. Please try again.",
         variant: "destructive",
       });
     },
@@ -462,14 +496,66 @@ export default function ManageGroupModal({ open, onOpenChange, group }: ManageGr
               />
             </div>
 
-            <Button 
-              onClick={handleUpdateGroup}
-              disabled={updateGroupMutation.isPending}
-              className="w-full"
-              data-testid="button-update-group"
-            >
-              {updateGroupMutation.isPending ? "Updating..." : "Update Group"}
-            </Button>
+            <div className="space-y-3">
+              <Button 
+                onClick={handleUpdateGroup}
+                disabled={updateGroupMutation.isPending}
+                className="w-full"
+                data-testid="button-update-group"
+              >
+                {updateGroupMutation.isPending ? "Updating..." : "Update Group"}
+              </Button>
+              
+              <div className="border-t pt-4">
+                <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-4">
+                  <h4 className="font-medium text-destructive mb-2 flex items-center">
+                    <i className="fas fa-exclamation-triangle mr-2"></i>
+                    Danger Zone
+                  </h4>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Permanently delete this group. This action cannot be undone and will remove all group data including members, prayer requests, and chat history.
+                  </p>
+                  
+                  <AlertDialog open={showDeleteConfirmation} onOpenChange={setShowDeleteConfirmation}>
+                    <AlertDialogTrigger asChild>
+                      <Button 
+                        variant="destructive"
+                        disabled={deleteGroupMutation.isPending}
+                        data-testid="button-delete-group"
+                      >
+                        <i className="fas fa-trash mr-2"></i>
+                        {deleteGroupMutation.isPending ? "Deleting..." : "Delete Group"}
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This action cannot be undone. This will permanently delete the group <strong>"{group?.name}"</strong> and remove all associated data including:
+                          <ul className="list-disc list-inside mt-2 space-y-1">
+                            <li>All group members</li>
+                            <li>Prayer requests and responses</li>
+                            <li>Chat message history</li>
+                            <li>Scheduled meetings</li>
+                            <li>Group invitations</li>
+                          </ul>
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
+                        <AlertDialogAction 
+                          onClick={() => deleteGroupMutation.mutate()}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          data-testid="button-confirm-delete"
+                        >
+                          Yes, delete group
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 

@@ -144,6 +144,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete('/api/groups/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const groupId = req.params.id;
+      
+      // Check if user is admin of the group
+      const group = await storage.getGroup(groupId);
+      if (!group) {
+        return res.status(404).json({ message: "Group not found" });
+      }
+      
+      if (group.adminId !== userId) {
+        return res.status(403).json({ message: "Only group admin can delete the group" });
+      }
+      
+      await storage.deleteGroup(groupId);
+      res.json({ message: "Group deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting group:", error);
+      res.status(500).json({ message: "Failed to delete group" });
+    }
+  });
+
   app.get('/api/groups/:id/members', isAuthenticated, async (req: any, res) => {
     try {
       const members = await storage.getGroupMemberships(req.params.id);

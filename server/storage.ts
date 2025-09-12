@@ -44,6 +44,7 @@ export interface IStorage {
   getGroupsByLocation(latitude: number, longitude: number, radiusKm?: number): Promise<Group[]>;
   getUserGroups(userId: string): Promise<Group[]>;
   getPublicGroups(): Promise<Group[]>;
+  deleteGroup(id: string): Promise<void>;
   
   // Group membership operations
   requestGroupJoin(membership: InsertGroupMembership): Promise<GroupMembership>;
@@ -187,6 +188,72 @@ export class DatabaseStorage implements IStorage {
       .from(groups)
       .where(eq(groups.isPublic, true))
       .orderBy(asc(groups.name));
+  }
+
+  async deleteGroup(id: string): Promise<void> {
+    // Delete all related data in the correct order due to foreign key constraints
+    
+    // Delete group invitations
+    await db
+      .delete(groupInvitations)
+      .where(eq(groupInvitations.groupId, id));
+    
+    // Delete meeting RSVPs for meetings in this group
+    const groupMeetings = await db
+      .select({ id: meetings.id })
+      .from(meetings)
+      .where(eq(meetings.groupId, id));
+    
+    const meetingIds = groupMeetings.map(m => m.id);
+    if (meetingIds.length > 0) {
+      await db
+        .delete(meetingRsvps)
+        .where(inArray(meetingRsvps.meetingId, meetingIds));
+    }
+    
+    // Delete meetings
+    await db
+      .delete(meetings)
+      .where(eq(meetings.groupId, id));
+    
+    // Delete chat messages
+    await db
+      .delete(chatMessages)
+      .where(eq(chatMessages.groupId, id));
+    
+    // Get prayer request IDs to delete responses
+    const groupPrayers = await db
+      .select({ id: prayerRequests.id })
+      .from(prayerRequests)
+      .where(eq(prayerRequests.groupId, id));
+    
+    const prayerIds = groupPrayers.map(p => p.id);
+    if (prayerIds.length > 0) {
+      // Delete prayer responses
+      await db
+        .delete(prayerResponses)
+        .where(inArray(prayerResponses.prayerRequestId, prayerIds));
+    }
+    
+    // Delete prayer requests
+    await db
+      .delete(prayerRequests)
+      .where(eq(prayerRequests.groupId, id));
+    
+    // Delete group memberships
+    await db
+      .delete(groupMemberships)
+      .where(eq(groupMemberships.groupId, id));
+    
+    // Delete notifications related to this group
+    await db
+      .delete(notifications)
+      .where(eq(notifications.relatedGroupId, id));
+    
+    // Finally delete the group itself
+    await db
+      .delete(groups)
+      .where(eq(groups.id, id));
   }
 
   // Group membership operations
