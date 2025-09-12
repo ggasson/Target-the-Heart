@@ -45,6 +45,7 @@ export default function CreateGroupModal({ open, onOpenChange }: CreateGroupModa
   const [allowMembersToInvite, setAllowMembersToInvite] = useState(false);
   const [maxMembers, setMaxMembers] = useState("50");
   const [groupRules, setGroupRules] = useState("");
+  const [isRecurringMeeting, setIsRecurringMeeting] = useState(true);
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -97,6 +98,7 @@ export default function CreateGroupModal({ open, onOpenChange }: CreateGroupModa
       allowMembersToInvite,
       maxMembers,
       groupRules: groupRules.trim() || null,
+      isRecurringMeeting,
     };
 
     createGroupMutation.mutate(groupData);
@@ -115,6 +117,7 @@ export default function CreateGroupModal({ open, onOpenChange }: CreateGroupModa
     setAllowMembersToInvite(false);
     setMaxMembers("50");
     setGroupRules("");
+    setIsRecurringMeeting(true);
     onOpenChange(false);
   };
 
@@ -164,6 +167,29 @@ export default function CreateGroupModal({ open, onOpenChange }: CreateGroupModa
           </div>
 
           {/* Meeting Schedule */}
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <Label htmlFor="isRecurringMeeting" className="text-sm font-medium">Meeting Type</Label>
+              <p className="text-xs text-muted-foreground">
+                {isRecurringMeeting 
+                  ? "Ongoing group that meets regularly"
+                  : "One-time event that will end after the meeting"
+                }
+              </p>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Label htmlFor="isRecurringMeeting" className="text-sm">
+                {isRecurringMeeting ? "Recurring" : "One-time"}
+              </Label>
+              <Switch
+                id="isRecurringMeeting"
+                checked={isRecurringMeeting}
+                onCheckedChange={setIsRecurringMeeting}
+                data-testid="switch-recurring-meeting"
+              />
+            </div>
+          </div>
+          
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label htmlFor="meetingDay">Meeting Day</Label>
