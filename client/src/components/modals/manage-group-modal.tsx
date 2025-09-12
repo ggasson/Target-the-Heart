@@ -130,7 +130,10 @@ export default function ManageGroupModal({ open, onOpenChange, group }: ManageGr
         description: "The group and all its data have been completely removed.",
       });
       
-      // Invalidate all group-related queries to remove from UI immediately
+      // Force removal from cache and refresh all group-related queries immediately
+      queryClient.removeQueries({ queryKey: ["/api/groups"] });
+      queryClient.removeQueries({ queryKey: ["/api/groups/my"] });
+      queryClient.removeQueries({ queryKey: ["/api/groups/public"] });
       queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
       queryClient.invalidateQueries({ queryKey: ["/api/groups/my"] });
       queryClient.invalidateQueries({ queryKey: ["/api/groups/public"] });
