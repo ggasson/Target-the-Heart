@@ -53,6 +53,7 @@ export const groups = pgTable("groups", {
   meetingDay: varchar("meeting_day"), // e.g., "Friday"
   meetingTime: varchar("meeting_time"), // e.g., "17:45"
   meetingLocation: varchar("meeting_location"),
+  isRecurringMeeting: boolean("is_recurring_meeting").default(true), // true for ongoing groups, false for one-time events
   latitude: decimal("latitude", { precision: 10, scale: 8 }),
   longitude: decimal("longitude", { precision: 11, scale: 8 }),
   isPublic: boolean("is_public").default(true),
