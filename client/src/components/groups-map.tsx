@@ -203,6 +203,17 @@ export default function GroupsMap({ onGroupSelect, selectedGroupId }: GroupsMapP
   const getCurrentLocation = () => {
     setIsGettingLocation(true);
     
+    // Check HTTPS requirement
+    if (window.location.protocol === 'http:' && window.location.hostname !== 'localhost') {
+      toast({
+        title: "HTTPS Required",
+        description: "GPS location requires a secure connection. Please use HTTPS.",
+        variant: "destructive",
+      });
+      setIsGettingLocation(false);
+      return;
+    }
+    
     if (!navigator.geolocation) {
       toast({
         title: "GPS Not Available",
@@ -213,8 +224,19 @@ export default function GroupsMap({ onGroupSelect, selectedGroupId }: GroupsMapP
       return;
     }
 
+    // Manual timeout fallback to prevent infinite loading
+    const fallbackTimeout = setTimeout(() => {
+      setIsGettingLocation(false);
+      toast({
+        title: "GPS Timeout",
+        description: "Location request is taking too long. Try refreshing the page and checking browser permissions.",
+        variant: "destructive",
+      });
+    }, 20000); // 20 seconds fallback
+
     navigator.geolocation.getCurrentPosition(
       (position) => {
+        clearTimeout(fallbackTimeout);
         const location = {
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
@@ -235,23 +257,28 @@ export default function GroupsMap({ onGroupSelect, selectedGroupId }: GroupsMapP
         setIsGettingLocation(false);
       },
       (error) => {
+        clearTimeout(fallbackTimeout);
         let message = "Could not get your location";
+        let extendedMessage = "";
         
         switch (error.code) {
           case error.PERMISSION_DENIED:
-            message = "Location access denied. Please enable location permissions.";
+            message = "Location access denied";
+            extendedMessage = "Please enable location permissions in your browser settings and refresh the page.";
             break;
           case error.POSITION_UNAVAILABLE:
-            message = "Location information unavailable.";
+            message = "Location information unavailable";
+            extendedMessage = "GPS signal may be weak or unavailable.";
             break;
           case error.TIMEOUT:
-            message = "Location request timed out.";
+            message = "Location request timed out";
+            extendedMessage = "Try again or check your internet connection.";
             break;
         }
         
         toast({
           title: "GPS Error",
-          description: message,
+          description: `${message}. ${extendedMessage}`,
           variant: "destructive",
         });
         
