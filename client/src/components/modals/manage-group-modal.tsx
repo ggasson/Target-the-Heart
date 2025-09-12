@@ -58,6 +58,8 @@ export default function ManageGroupModal({ open, onOpenChange, group }: ManageGr
   const [showMeetingModal, setShowMeetingModal] = useState(false);
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [deleteConfirmationText, setDeleteConfirmationText] = useState("");
+  const [deleteStep, setDeleteStep] = useState(1);
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -124,17 +126,30 @@ export default function ManageGroupModal({ open, onOpenChange, group }: ManageGr
     },
     onSuccess: () => {
       toast({
-        title: "Group deleted",
-        description: "Your group has been permanently deleted.",
+        title: "Group permanently deleted",
+        description: "The group and all its data have been completely removed.",
       });
+      
+      // Invalidate all group-related queries to remove from UI immediately
       queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
       queryClient.invalidateQueries({ queryKey: ["/api/groups/my"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/groups/public"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/groups", group?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/meetings/next"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prayers/my"] });
+      
+      // Remove specific group data from cache
+      queryClient.removeQueries({ queryKey: ["/api/groups", group?.id] });
+      queryClient.removeQueries({ queryKey: [`/api/groups/${group?.id}/members`] });
+      queryClient.removeQueries({ queryKey: [`/api/groups/${group?.id}/meetings`] });
+      queryClient.removeQueries({ queryKey: [`/api/groups/${group?.id}/invitations`] });
+      
       onOpenChange(false);
     },
     onError: () => {
       toast({
-        title: "Error",
-        description: "Failed to delete group. Please try again.",
+        title: "Failed to delete group",
+        description: "Could not delete the group. Please try again.",
         variant: "destructive",
       });
     },
@@ -516,7 +531,16 @@ export default function ManageGroupModal({ open, onOpenChange, group }: ManageGr
                     Permanently delete this group. This action cannot be undone and will remove all group data including members, prayer requests, and chat history.
                   </p>
                   
-                  <AlertDialog open={showDeleteConfirmation} onOpenChange={setShowDeleteConfirmation}>
+                  <AlertDialog 
+                    open={showDeleteConfirmation} 
+                    onOpenChange={(open) => {
+                      setShowDeleteConfirmation(open);
+                      if (!open) {
+                        setDeleteStep(1);
+                        setDeleteConfirmationText("");
+                      }
+                    }}
+                  >
                     <AlertDialogTrigger asChild>
                       <Button 
                         variant="destructive"
@@ -527,30 +551,116 @@ export default function ManageGroupModal({ open, onOpenChange, group }: ManageGr
                         {deleteGroupMutation.isPending ? "Deleting..." : "Delete Group"}
                       </Button>
                     </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This action cannot be undone. This will permanently delete the group <strong>"{group?.name}"</strong> and remove all associated data including:
-                          <ul className="list-disc list-inside mt-2 space-y-1">
-                            <li>All group members</li>
-                            <li>Prayer requests and responses</li>
-                            <li>Chat message history</li>
-                            <li>Scheduled meetings</li>
-                            <li>Group invitations</li>
-                          </ul>
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
-                        <AlertDialogAction 
-                          onClick={() => deleteGroupMutation.mutate()}
-                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          data-testid="button-confirm-delete"
-                        >
-                          Yes, delete group
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
+                    <AlertDialogContent className="max-w-md">
+                      {deleteStep === 1 && (
+                        <>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle className="text-destructive flex items-center">
+                              <i className="fas fa-exclamation-triangle mr-2"></i>
+                              ⚠️ WARNING: Permanent Deletion
+                            </AlertDialogTitle>
+                            <AlertDialogDescription className="space-y-3">
+                              <p className="font-medium text-foreground">
+                                You are about to permanently delete the group <strong>"{group?.name}"</strong>
+                              </p>
+                              
+                              <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3">
+                                <p className="font-medium text-destructive mb-2">This will PERMANENTLY delete:</p>
+                                <ul className="list-disc list-inside space-y-1 text-sm">
+                                  <li>All group members and their membership history</li>
+                                  <li>All prayer requests and prayer responses</li>
+                                  <li>Complete chat message history</li>
+                                  <li>All scheduled meetings and RSVP data</li>
+                                  <li>Group invitations and invitation links</li>
+                                  <li>All group settings and configuration</li>
+                                </ul>
+                              </div>
+                              
+                              <p className="text-destructive font-medium">
+                                ⚠️ This action cannot be undone and all data will be lost forever.
+                              </p>
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel data-testid="button-cancel-delete-step1">Cancel</AlertDialogCancel>
+                            <Button 
+                              onClick={() => setDeleteStep(2)}
+                              variant="destructive"
+                              data-testid="button-continue-delete"
+                            >
+                              I understand, continue
+                            </Button>
+                          </AlertDialogFooter>
+                        </>
+                      )}
+                      
+                      {deleteStep === 2 && (
+                        <>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle className="text-destructive">
+                              🔒 Final Confirmation Required
+                            </AlertDialogTitle>
+                            <AlertDialogDescription className="space-y-4">
+                              <p>
+                                To confirm deletion, please type the exact group name below:
+                              </p>
+                              
+                              <div className="bg-muted p-3 rounded-lg">
+                                <p className="font-mono font-medium text-center">
+                                  {group?.name}
+                                </p>
+                              </div>
+                              
+                              <div>
+                                <Label htmlFor="delete-confirmation">Type group name to confirm:</Label>
+                                <Input
+                                  id="delete-confirmation"
+                                  value={deleteConfirmationText}
+                                  onChange={(e) => setDeleteConfirmationText(e.target.value)}
+                                  placeholder="Type the group name exactly..."
+                                  className="mt-2"
+                                  data-testid="input-delete-confirmation"
+                                />
+                              </div>
+                              
+                              <p className="text-sm text-destructive font-medium">
+                                ⚠️ Once you click "PERMANENTLY DELETE", the group and all its data will be immediately and irreversibly destroyed.
+                              </p>
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter className="flex-col space-y-2">
+                            <div className="flex space-x-2 w-full">
+                              <Button 
+                                onClick={() => setDeleteStep(1)}
+                                variant="outline"
+                                className="flex-1"
+                                data-testid="button-back-delete"
+                              >
+                                ← Back
+                              </Button>
+                              <AlertDialogCancel className="flex-1" data-testid="button-cancel-delete-step2">Cancel</AlertDialogCancel>
+                            </div>
+                            <AlertDialogAction 
+                              onClick={() => deleteGroupMutation.mutate()}
+                              disabled={deleteConfirmationText !== group?.name || deleteGroupMutation.isPending}
+                              className="w-full bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
+                              data-testid="button-confirm-final-delete"
+                            >
+                              {deleteGroupMutation.isPending ? (
+                                <>
+                                  <i className="fas fa-spinner fa-spin mr-2"></i>
+                                  Deleting...
+                                </>
+                              ) : (
+                                <>
+                                  <i className="fas fa-trash mr-2"></i>
+                                  PERMANENTLY DELETE GROUP
+                                </>
+                              )}
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </>
+                      )}
                     </AlertDialogContent>
                   </AlertDialog>
                 </div>
