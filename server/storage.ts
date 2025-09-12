@@ -45,6 +45,7 @@ export interface IStorage {
   getUserGroups(userId: string): Promise<Group[]>;
   getPublicGroups(): Promise<Group[]>;
   deleteGroup(id: string): Promise<void>;
+  deleteAllGroups(): Promise<void>;
   
   // Group membership operations
   requestGroupJoin(membership: InsertGroupMembership): Promise<GroupMembership>;
@@ -191,69 +192,84 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteGroup(id: string): Promise<void> {
-    // Delete all related data in the correct order due to foreign key constraints
-    
-    // Delete group invitations
-    await db
-      .delete(groupInvitations)
-      .where(eq(groupInvitations.groupId, id));
-    
-    // Delete meeting RSVPs for meetings in this group
-    const groupMeetings = await db
-      .select({ id: meetings.id })
-      .from(meetings)
-      .where(eq(meetings.groupId, id));
-    
-    const meetingIds = groupMeetings.map(m => m.id);
-    if (meetingIds.length > 0) {
-      await db
-        .delete(meetingRsvps)
-        .where(inArray(meetingRsvps.meetingId, meetingIds));
-    }
-    
-    // Delete meetings
-    await db
-      .delete(meetings)
-      .where(eq(meetings.groupId, id));
-    
-    // Delete chat messages
-    await db
-      .delete(chatMessages)
-      .where(eq(chatMessages.groupId, id));
-    
-    // Get prayer request IDs to delete responses
-    const groupPrayers = await db
-      .select({ id: prayerRequests.id })
-      .from(prayerRequests)
-      .where(eq(prayerRequests.groupId, id));
-    
-    const prayerIds = groupPrayers.map(p => p.id);
-    if (prayerIds.length > 0) {
-      // Delete prayer responses
-      await db
-        .delete(prayerResponses)
-        .where(inArray(prayerResponses.prayerRequestId, prayerIds));
-    }
-    
-    // Delete prayer requests
-    await db
-      .delete(prayerRequests)
-      .where(eq(prayerRequests.groupId, id));
-    
-    // Delete group memberships
-    await db
-      .delete(groupMemberships)
-      .where(eq(groupMemberships.groupId, id));
-    
-    // Delete notifications related to this group
-    await db
-      .delete(notifications)
-      .where(eq(notifications.relatedGroupId, id));
-    
-    // Finally delete the group itself
-    await db
-      .delete(groups)
-      .where(eq(groups.id, id));
+    return await db.transaction(async (tx) => {
+      // Get related IDs first for notification cleanup
+      const groupMeetings = await tx
+        .select({ id: meetings.id })
+        .from(meetings)
+        .where(eq(meetings.groupId, id));
+      
+      const groupPrayers = await tx
+        .select({ id: prayerRequests.id })
+        .from(prayerRequests)
+        .where(eq(prayerRequests.groupId, id));
+      
+      const meetingIds = groupMeetings.map(m => m.id);
+      const prayerIds = groupPrayers.map(p => p.id);
+      
+      // Delete all related data in the correct order due to foreign key constraints
+      
+      // 1. Delete group invitations
+      await tx
+        .delete(groupInvitations)
+        .where(eq(groupInvitations.groupId, id));
+      
+      // 2. Delete meeting RSVPs for meetings in this group
+      if (meetingIds.length > 0) {
+        await tx
+          .delete(meetingRsvps)
+          .where(inArray(meetingRsvps.meetingId, meetingIds));
+      }
+      
+      // 3. Delete prayer responses for prayers in this group
+      if (prayerIds.length > 0) {
+        await tx
+          .delete(prayerResponses)
+          .where(inArray(prayerResponses.prayerRequestId, prayerIds));
+      }
+      
+      // 4. Delete notifications - handle all related notifications including those referencing meetings/prayers
+      const notificationConditions = [eq(notifications.relatedGroupId, id)];
+      if (meetingIds.length > 0) {
+        notificationConditions.push(inArray(notifications.relatedMeetingId, meetingIds));
+      }
+      if (prayerIds.length > 0) {
+        notificationConditions.push(inArray(notifications.relatedPrayerRequestId, prayerIds));
+      }
+      
+      await tx
+        .delete(notifications)
+        .where(
+          notificationConditions.length === 1 
+            ? notificationConditions[0] 
+            : or(...notificationConditions)
+        );
+      
+      // 5. Delete meetings
+      await tx
+        .delete(meetings)
+        .where(eq(meetings.groupId, id));
+      
+      // 6. Delete chat messages
+      await tx
+        .delete(chatMessages)
+        .where(eq(chatMessages.groupId, id));
+      
+      // 7. Delete prayer requests
+      await tx
+        .delete(prayerRequests)
+        .where(eq(prayerRequests.groupId, id));
+      
+      // 8. Delete group memberships
+      await tx
+        .delete(groupMemberships)
+        .where(eq(groupMemberships.groupId, id));
+      
+      // 9. Finally delete the group itself
+      await tx
+        .delete(groups)
+        .where(eq(groups.id, id));
+    });
   }
 
   // Group membership operations
@@ -683,6 +699,67 @@ export class DatabaseStorage implements IStorage {
       .update(groupInvitations)
       .set({ isActive: false })
       .where(eq(groupInvitations.id, id));
+  }
+
+  // Delete all groups and related data - ADMIN ONLY operation
+  async deleteAllGroups(): Promise<void> {
+    return await db.transaction(async (tx) => {
+      // Get all group, meeting, and prayer IDs for comprehensive cleanup
+      const allGroups = await tx.select({ id: groups.id }).from(groups);
+      const allMeetings = await tx.select({ id: meetings.id }).from(meetings);
+      const allPrayers = await tx.select({ id: prayerRequests.id }).from(prayerRequests);
+      
+      const groupIds = allGroups.map(g => g.id);
+      const meetingIds = allMeetings.map(m => m.id);
+      const prayerIds = allPrayers.map(p => p.id);
+      
+      if (groupIds.length === 0) return; // No groups to delete
+      
+      // Delete in proper order to avoid foreign key constraint violations
+      
+      // 1. Delete meeting RSVPs
+      if (meetingIds.length > 0) {
+        await tx
+          .delete(meetingRsvps)
+          .where(inArray(meetingRsvps.meetingId, meetingIds));
+      }
+      
+      // 2. Delete prayer responses
+      if (prayerIds.length > 0) {
+        await tx
+          .delete(prayerResponses)
+          .where(inArray(prayerResponses.prayerRequestId, prayerIds));
+      }
+      
+      // 3. Delete ALL notifications related to groups, meetings, or prayers
+      await tx
+        .delete(notifications)
+        .where(
+          or(
+            inArray(notifications.relatedGroupId, groupIds),
+            ...(meetingIds.length > 0 ? [inArray(notifications.relatedMeetingId, meetingIds)] : []),
+            ...(prayerIds.length > 0 ? [inArray(notifications.relatedPrayerRequestId, prayerIds)] : [])
+          )
+        );
+      
+      // 4. Delete meetings
+      await tx.delete(meetings);
+      
+      // 5. Delete chat messages
+      await tx.delete(chatMessages);
+      
+      // 6. Delete prayer requests
+      await tx.delete(prayerRequests);
+      
+      // 7. Delete group invitations
+      await tx.delete(groupInvitations);
+      
+      // 8. Delete group memberships
+      await tx.delete(groupMemberships);
+      
+      // 9. Finally delete all groups
+      await tx.delete(groups);
+    });
   }
 
   // Get next upcoming meeting across all user groups with RSVP counts

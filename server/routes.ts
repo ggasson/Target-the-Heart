@@ -167,6 +167,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // REMOVED: Admin purge route removed after one-time use for security reasons
+
   app.get('/api/groups/:id/members', isAuthenticated, async (req: any, res) => {
     try {
       const members = await storage.getGroupMemberships(req.params.id);
