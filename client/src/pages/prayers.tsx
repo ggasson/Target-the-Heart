@@ -47,25 +47,6 @@ export default function Prayers() {
     prayerResponseMutation.mutate({ prayerId, action });
   };
 
-  const markAnsweredMutation = useMutation({
-    mutationFn: async (prayerId: string) => {
-      await apiRequest("PUT", `/api/prayers/${prayerId}/status`, { status: "answered" });
-    },
-    onSuccess: () => {
-      toast({
-        title: "Prayer Marked as Answered",
-        description: "Praise God! Your prayer has been marked as answered.",
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/prayers/my"] });
-    },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to mark prayer as answered. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
 
   const deletePrayerMutation = useMutation({
     mutationFn: async (prayerId: string) => {
@@ -87,9 +68,6 @@ export default function Prayers() {
     },
   });
 
-  const handleMarkAnswered = (prayerId: string) => {
-    markAnsweredMutation.mutate(prayerId);
-  };
 
   const handleDeletePrayer = (prayerId: string) => {
     if (window.confirm("Are you sure you want to delete this prayer? This action cannot be undone.")) {
@@ -98,11 +76,14 @@ export default function Prayers() {
   };
 
   const filteredPrayers = allPrayers.filter((prayer) => {
+    // Filter out answered prayers completely
+    if (prayer.status === "answered") {
+      return false;
+    }
+    
     switch (selectedTab) {
       case "my":
         return prayer.authorId === user?.id;
-      case "answered":
-        return prayer.status === "answered";
       default:
         return true;
     }
@@ -111,7 +92,6 @@ export default function Prayers() {
   const tabs = [
     { id: "all", label: "All Prayers" },
     { id: "my", label: "My Prayers" },
-    { id: "answered", label: "Answered" },
   ];
 
   return (
@@ -165,7 +145,7 @@ export default function Prayers() {
               prayer={prayer}
               currentUserId={user?.id}
               onPrayerResponse={handlePrayerResponse}
-              onMarkAnswered={handleMarkAnswered}
+              onMarkAnswered={undefined}
               onDeletePrayer={handleDeletePrayer}
             />
           ))
