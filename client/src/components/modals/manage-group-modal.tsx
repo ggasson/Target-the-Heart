@@ -336,26 +336,33 @@ export default function ManageGroupModal({ open, onOpenChange, group }: ManageGr
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="w-full max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[95vw] max-w-lg max-h-[90vh] overflow-y-auto sm:w-full">
         <DialogHeader>
           <DialogTitle>Manage {group.name}</DialogTitle>
         </DialogHeader>
         
         {/* Tab Navigation */}
-        <div className="flex space-x-1 mb-6 bg-muted rounded-lg p-1">
+        <div className="flex space-x-1 mb-6 bg-muted rounded-lg p-1 overflow-x-auto">
           {tabs.map((tab) => (
             <Button
               key={tab.id}
               variant={activeTab === tab.id ? "default" : "ghost"}
               size="sm"
               onClick={() => setActiveTab(tab.id)}
-              className="flex-1 relative"
+              className="flex-1 relative whitespace-nowrap min-w-0 text-xs sm:text-sm"
               data-testid={`tab-${tab.id}`}
             >
-              <i className={`${tab.icon} mr-2`}></i>
-              {tab.label}
+              <i className={`${tab.icon} mr-1 sm:mr-2 text-xs`}></i>
+              <span className="hidden sm:inline">{tab.label}</span>
+              <span className="sm:hidden">
+                {tab.label === "Settings" && "Set"}
+                {tab.label === "Meetings" && "Meet"}
+                {tab.label === "Members" && "Mem"}
+                {tab.label === "Requests" && "Req"}
+                {tab.label === "Invitations" && "Inv"}
+              </span>
               {tab.badge && tab.badge > 0 && (
-                <Badge className="ml-2 bg-destructive text-destructive-foreground">
+                <Badge className="ml-1 bg-destructive text-destructive-foreground text-xs">
                   {tab.badge}
                 </Badge>
               )}
@@ -674,11 +681,12 @@ export default function ManageGroupModal({ open, onOpenChange, group }: ManageGr
 
         {activeTab === "meetings" && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
               <h3 className="font-medium text-foreground">Group Meetings</h3>
               <Button
                 onClick={handleCreateMeeting}
                 size="sm"
+                className="w-full sm:w-auto"
                 data-testid="button-create-meeting"
               >
                 <i className="fas fa-plus mr-2"></i>
@@ -706,80 +714,89 @@ export default function ManageGroupModal({ open, onOpenChange, group }: ManageGr
                   
                   return (
                     <Card key={meeting.id}>
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-2 mb-2">
-                              <h4 className="font-medium text-foreground">{meeting.title}</h4>
-                              <Badge 
-                                variant={meeting.status === "scheduled" ? "default" : meeting.status === "cancelled" ? "destructive" : "secondary"}
-                              >
-                                {meeting.status}
-                              </Badge>
-                              {isUpcoming && (
+                      <CardContent className="p-3 sm:p-4">
+                        <div className="space-y-3">
+                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                            <div className="flex-1 min-w-0 space-y-2">
+                              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                                <h4 className="font-medium text-foreground truncate">{meeting.title}</h4>
+                                <div className="flex gap-1 flex-wrap">
+                                  <Badge 
+                                    variant={meeting.status === "scheduled" ? "default" : meeting.status === "cancelled" ? "destructive" : "secondary"}
+                                    className="text-xs"
+                                  >
+                                    {meeting.status}
+                                  </Badge>
+                                  {isUpcoming && (
+                                    <Badge variant="outline" className="text-xs">
+                                      Upcoming
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                              
+                              {meeting.topic && (
+                                <p className="text-sm text-muted-foreground">
+                                  <i className="fas fa-tag mr-1"></i>
+                                  Topic: {meeting.topic}
+                                </p>
+                              )}
+                              
+                              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm text-muted-foreground">
+                                <span className="flex items-center">
+                                  <i className="fas fa-calendar mr-1"></i>
+                                  {meetingDate.toLocaleDateString()}
+                                </span>
+                                <span className="flex items-center">
+                                  <i className="fas fa-clock mr-1"></i>
+                                  {meetingDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              </div>
+                              
+                              {meeting.venue && (
+                                <p className="text-sm text-muted-foreground">
+                                  <i className="fas fa-map-marker-alt mr-1"></i>
+                                  {meeting.venue}
+                                </p>
+                              )}
+                              
+                              {meeting.description && (
+                                <p className="text-sm text-muted-foreground">
+                                  {meeting.description}
+                                </p>
+                              )}
+                              
+                              {meeting.isRecurring && (
                                 <Badge variant="outline" className="text-xs">
-                                  Upcoming
+                                  <i className="fas fa-repeat mr-1"></i>
+                                  Recurring {meeting.recurringPattern}
                                 </Badge>
                               )}
                             </div>
                             
-                            {meeting.topic && (
-                              <p className="text-sm text-muted-foreground mb-2">
-                                <i className="fas fa-tag mr-1"></i>
-                                Topic: {meeting.topic}
-                              </p>
-                            )}
-                            
-                            <div className="flex items-center space-x-4 text-sm text-muted-foreground mb-2">
-                              <span>
-                                <i className="fas fa-calendar mr-1"></i>
-                                {meetingDate.toLocaleDateString()}
-                              </span>
-                              <span>
-                                <i className="fas fa-clock mr-1"></i>
-                                {meetingDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                              </span>
+                            <div className="flex gap-2 w-full sm:w-auto">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleEditMeeting(meeting)}
+                                className="flex-1 sm:flex-none"
+                                data-testid={`button-edit-meeting-${meeting.id}`}
+                              >
+                                <i className="fas fa-edit mr-1 sm:mr-0"></i>
+                                <span className="sm:hidden">Edit</span>
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleDeleteMeeting(meeting.id)}
+                                disabled={deleteMeetingMutation.isPending}
+                                className="flex-1 sm:flex-none"
+                                data-testid={`button-delete-meeting-${meeting.id}`}
+                              >
+                                <i className="fas fa-trash mr-1 sm:mr-0"></i>
+                                <span className="sm:hidden">Delete</span>
+                              </Button>
                             </div>
-                            
-                            {meeting.venue && (
-                              <p className="text-sm text-muted-foreground mb-2">
-                                <i className="fas fa-map-marker-alt mr-1"></i>
-                                {meeting.venue}
-                              </p>
-                            )}
-                            
-                            {meeting.description && (
-                              <p className="text-sm text-muted-foreground">
-                                {meeting.description}
-                              </p>
-                            )}
-                            
-                            {meeting.isRecurring && (
-                              <Badge variant="outline" className="mt-2">
-                                <i className="fas fa-repeat mr-1"></i>
-                                Recurring {meeting.recurringPattern}
-                              </Badge>
-                            )}
-                          </div>
-                          
-                          <div className="flex space-x-2 ml-4">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleEditMeeting(meeting)}
-                              data-testid={`button-edit-meeting-${meeting.id}`}
-                            >
-                              <i className="fas fa-edit"></i>
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleDeleteMeeting(meeting.id)}
-                              disabled={deleteMeetingMutation.isPending}
-                              data-testid={`button-delete-meeting-${meeting.id}`}
-                            >
-                              <i className="fas fa-trash"></i>
-                            </Button>
                           </div>
                         </div>
                       </CardContent>
