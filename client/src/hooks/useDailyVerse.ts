@@ -58,27 +58,11 @@ export function useDailyVerse() {
   const { data, isLoading, error } = useQuery<BibleVerse>({
     queryKey: ["daily-bible-verse", todaysVerseRef],
     queryFn: async () => {
-      try {
-        const response = await fetch(`https://bible-api.com/${todaysVerseRef}?translation=kjv`);
-        if (!response.ok) {
-          throw new Error('Failed to fetch verse');
-        }
-        const data = await response.json();
-        return {
-          reference: data.reference,
-          text: data.text.replace(/\s+/g, ' ').trim(),
-          translation_id: data.translation_id || 'kjv',
-          translation_name: data.translation_name || 'King James Version'
-        };
-      } catch (error) {
-        // Fallback verse if API fails
-        return {
-          reference: "John 3:16",
-          text: "For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life.",
-          translation_id: "kjv",
-          translation_name: "King James Version"
-        };
+      const response = await fetch(`/api/daily-verse?q=${encodeURIComponent(todaysVerseRef)}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch verse');
       }
+      return response.json();
     },
     staleTime: 1000 * 60 * 60 * 12, // 12 hours - verse stays fresh for half a day
     gcTime: 1000 * 60 * 60 * 24, // 24 hours - keep in cache for a full day

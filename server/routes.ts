@@ -9,6 +9,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
 
+  // Daily verse route
+  app.get('/api/daily-verse', async (req, res) => {
+    try {
+      const verseRef = req.query.q as string;
+      if (!verseRef) {
+        return res.status(400).json({ message: "Verse reference required" });
+      }
+
+      // Try ESV API first if API key is available
+      const esvApiKey = process.env.ESV_API_KEY;
+      
+      if (esvApiKey) {
+        try {
+          const esvResponse = await fetch(`https://api.esv.org/v3/passage/text/?q=${encodeURIComponent(verseRef)}&include-headings=false&include-footnotes=false&include-verse-numbers=false&include-short-copyright=false&include-passage-references=false`, {
+            headers: {
+              'Authorization': `Token ${esvApiKey}`
+            }
+          });
+          
+          if (esvResponse.ok) {
+            const esvData = await esvResponse.json();
+            if (esvData.passages && esvData.passages.length > 0) {
+              return res.json({
+                reference: esvData.canonical || verseRef,
+                text: esvData.passages[0].replace(/\s+/g, ' ').trim(),
+                translation_id: "esv",
+                translation_name: "English Standard Version"
+              });
+            }
+          }
+        } catch (esvError) {
+          console.error("ESV API error:", esvError);
+        }
+      }
+      
+      // Fallback to bible-api.com if ESV API fails or no key
+      try {
+        const response = await fetch(`https://bible-api.com/${verseRef}?translation=kjv`);
+        if (response.ok) {
+          const data = await response.json();
+          return res.json({
+            reference: data.reference,
+            text: data.text.replace(/\s+/g, ' ').trim(),
+            translation_id: data.translation_id || 'kjv',
+            translation_name: data.translation_name || 'King James Version'
+          });
+        }
+      } catch (fallbackError) {
+        console.error("Bible API fallback error:", fallbackError);
+      }
+      
+      // Final fallback verse if all APIs fail
+      res.json({
+        reference: "John 3:16",
+        text: "For God so loved the world, that he gave his only Son, that whoever believes in him should not perish but have eternal life.",
+        translation_id: "esv",
+        translation_name: "English Standard Version"
+      });
+    } catch (error) {
+      console.error("Error fetching daily verse:", error);
+      res.status(500).json({ message: "Failed to fetch daily verse" });
+    }
+  });
+
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
