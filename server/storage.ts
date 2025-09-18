@@ -88,6 +88,11 @@ export interface IStorage {
   useGroupInvitation(token: string): Promise<void>;
   getGroupInvitations(groupId: string): Promise<(GroupInvitation & { createdBy: User })[]>;
   deactivateGroupInvitation(id: string): Promise<void>;
+  
+  // Birthday operations
+  updateUserBirthday(userId: string, birthday: string | null): Promise<void>;
+  updateMembershipBirthdaySharing(membershipId: string, shareBirthday: boolean): Promise<void>;
+  getGroupTodaysBirthdays(groupId: string): Promise<User[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -969,6 +974,44 @@ export class DatabaseStorage implements IStorage {
         relatedGroupId: prayer.prayer_requests.groupId,
       });
     }
+  }
+
+  // Birthday operations
+  async updateUserBirthday(userId: string, birthday: string | null): Promise<void> {
+    await db
+      .update(users)
+      .set({ birthday })
+      .where(eq(users.id, userId));
+  }
+
+  async updateMembershipBirthdaySharing(membershipId: string, shareBirthday: boolean): Promise<void> {
+    await db
+      .update(groupMemberships)
+      .set({ shareBirthday })
+      .where(eq(groupMemberships.id, membershipId));
+  }
+
+  async getGroupTodaysBirthdays(groupId: string): Promise<User[]> {
+    const today = new Date();
+    const todayMonth = today.getMonth() + 1; // getMonth() returns 0-11, need 1-12
+    const todayDay = today.getDate();
+
+    const birthdayMembers = await db
+      .select({ user: users })
+      .from(groupMemberships)
+      .innerJoin(users, eq(groupMemberships.userId, users.id))
+      .where(
+        and(
+          eq(groupMemberships.groupId, groupId),
+          eq(groupMemberships.status, "approved"),
+          eq(groupMemberships.shareBirthday, true),
+          sql`EXTRACT(MONTH FROM ${users.birthday}) = ${todayMonth}`,
+          sql`EXTRACT(DAY FROM ${users.birthday}) = ${todayDay}`
+        )
+      )
+      .orderBy(asc(users.firstName));
+
+    return birthdayMembers.map(result => result.user);
   }
 }
 

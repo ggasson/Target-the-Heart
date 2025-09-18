@@ -10,6 +10,7 @@ import {
   decimal,
   pgEnum,
   unique,
+  date,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
@@ -34,6 +35,7 @@ export const users = pgTable("users", {
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
   phoneNumber: varchar("phone_number"),
+  birthday: date("birthday"), // Optional birthday for group sharing
   isVerified: boolean("is_verified").default(false),
   verificationCode: varchar("verification_code"),
   verificationExpiry: timestamp("verification_expiry"),
@@ -61,6 +63,7 @@ export const groups = pgTable("groups", {
   requireApprovalToJoin: boolean("require_approval_to_join").default(true),
   requireApprovalToPost: boolean("require_approval_to_post").default(false),
   allowMembersToInvite: boolean("allow_members_to_invite").default(false),
+  requireBirthdayToJoin: boolean("require_birthday_to_join").default(false),
   maxMembers: varchar("max_members").default("50"),
   groupRules: text("group_rules"),
   createdAt: timestamp("created_at").defaultNow(),
@@ -89,6 +92,7 @@ export const groupMemberships = pgTable("group_memberships", {
   status: membershipStatusEnum("status").default("pending"),
   role: memberRoleEnum("role").default("member"),
   message: text("message"), // Join request message
+  shareBirthday: boolean("share_birthday").default(false), // Whether to share birthday with this group
   joinedAt: timestamp("joined_at"),
   createdAt: timestamp("created_at").defaultNow(),
 });

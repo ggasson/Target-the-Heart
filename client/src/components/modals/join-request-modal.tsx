@@ -8,12 +8,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface JoinRequestModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   group: any;
-  onSubmit: (message: string) => void;
+  onSubmit: (data: { message: string; birthday?: string; shareBirthday?: boolean }) => void;
   isLoading: boolean;
 }
 
@@ -25,14 +27,22 @@ export default function JoinRequestModal({
   isLoading 
 }: JoinRequestModalProps) {
   const [message, setMessage] = useState("");
+  const [birthday, setBirthday] = useState("");
+  const [shareBirthday, setShareBirthday] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(message.trim());
+    onSubmit({
+      message: message.trim(),
+      birthday: birthday || undefined,
+      shareBirthday: shareBirthday
+    });
   };
 
   const handleClose = () => {
     setMessage("");
+    setBirthday("");
+    setShareBirthday(false);
     onOpenChange(false);
   };
 
@@ -63,6 +73,46 @@ export default function JoinRequestModal({
               className="resize-none"
               data-testid="textarea-join-message"
             />
+          </div>
+
+          {/* Birthday section */}
+          <div className="space-y-3">
+            <div>
+              <Label htmlFor="birthday">
+                Birthday {group?.requireBirthdayToJoin && <span className="text-red-500">*</span>}
+                <span className="text-sm text-muted-foreground ml-1">(optional)</span>
+              </Label>
+              <Input
+                id="birthday"
+                type="date"
+                value={birthday}
+                onChange={(e) => setBirthday(e.target.value)}
+                className="mt-1"
+                data-testid="input-birthday"
+                required={group?.requireBirthdayToJoin}
+              />
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="shareBirthday"
+                checked={shareBirthday}
+                onCheckedChange={(checked) => setShareBirthday(checked as boolean)}
+                data-testid="checkbox-share-birthday"
+              />
+              <Label 
+                htmlFor="shareBirthday" 
+                className="text-sm font-normal cursor-pointer"
+              >
+                Share my birthday with this group
+              </Label>
+            </div>
+            
+            {group?.requireBirthdayToJoin && (
+              <p className="text-xs text-muted-foreground">
+                This group requires a birthday to join
+              </p>
+            )}
           </div>
           
           <div className="flex space-x-3 mt-6">

@@ -32,6 +32,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { useTodaysBirthdays } from "@/hooks/useTodaysBirthdays";
 import { apiRequest } from "@/lib/queryClient";
 import MeetingModal from "@/components/modals/meeting-modal";
 import type { Group, Meeting, GroupInvitation } from "@shared/schema";
@@ -86,6 +87,9 @@ export default function ManageGroupModal({ open, onOpenChange, group }: ManageGr
     queryKey: ["/api/groups", group?.id, "members"],
     enabled: !!group?.id && open,
   });
+
+  // Fetch today's birthdays for this group
+  const { data: todaysBirthdays = [] } = useTodaysBirthdays(group?.id, open);
 
   // Fetch pending membership requests
   const { data: pendingRequests = [] } = useQuery<any[]>({
@@ -812,6 +816,42 @@ export default function ManageGroupModal({ open, onOpenChange, group }: ManageGr
           <div className="space-y-4">
             <h3 className="font-medium text-foreground mb-4">Group Members</h3>
             
+            {/* Birthday Banner */}
+            {todaysBirthdays.length > 0 && (
+              <Card 
+                className="bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border-yellow-200 dark:border-yellow-800"
+                data-testid="banner-birthdays-today"
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-2xl">🎉</span>
+                    <div>
+                      <p className="font-medium text-foreground">
+                        {todaysBirthdays.length === 1 ? "Birthday Today!" : "Birthdays Today!"}
+                      </p>
+                      <p 
+                        className="text-sm text-muted-foreground"
+                        data-testid="text-birthday-names"
+                      >
+                        {todaysBirthdays.slice(0, 3).map((user, index) => {
+                          const displayName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email;
+                          return (
+                            <span key={user.id}>
+                              {displayName}
+                              {index < Math.min(todaysBirthdays.length, 3) - 1 && ", "}
+                            </span>
+                          );
+                        })}
+                        {todaysBirthdays.length > 3 && (
+                          <span> and {todaysBirthdays.length - 3} more</span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            
             {members.length === 0 ? (
               <p className="text-muted-foreground text-center py-8">No members yet.</p>
             ) : (
@@ -827,9 +867,20 @@ export default function ManageGroupModal({ open, onOpenChange, group }: ManageGr
                             </span>
                           </div>
                           <div>
-                            <p className="font-medium text-foreground">
-                              {member.user.firstName} {member.user.lastName}
-                            </p>
+                            <div className="flex items-center space-x-2">
+                              <p className="font-medium text-foreground">
+                                {`${member.user.firstName || ''} ${member.user.lastName || ''}`.trim() || member.user.email}
+                              </p>
+                              {todaysBirthdays.some(user => user.id === member.user.id) && (
+                                <Badge 
+                                  variant="secondary" 
+                                  className="bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 border-yellow-200 dark:border-yellow-700"
+                                  data-testid={`badge-birthday-${member.user.id}`}
+                                >
+                                  🎂 Birthday
+                                </Badge>
+                              )}
+                            </div>
                             <p className="text-sm text-muted-foreground">
                               {member.user.email}
                             </p>

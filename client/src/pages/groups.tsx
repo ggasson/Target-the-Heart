@@ -124,8 +124,17 @@ export default function Groups() {
   }, [availableGroups, searchQuery, selectedFilter, userLocation, myPendingRequests]);
 
   const joinRequestMutation = useMutation({
-    mutationFn: async ({ groupId, message }: { groupId: string; message: string }) => {
-      await apiRequest("POST", `/api/groups/${groupId}/join`, { message });
+    mutationFn: async ({ groupId, message, birthday, shareBirthday }: { 
+      groupId: string; 
+      message: string; 
+      birthday?: string; 
+      shareBirthday?: boolean; 
+    }) => {
+      await apiRequest("POST", `/api/groups/${groupId}/join`, { 
+        message, 
+        birthday, 
+        shareBirthday 
+      });
     },
     onSuccess: () => {
       toast({
@@ -150,11 +159,13 @@ export default function Groups() {
     setShowJoinModal(true);
   };
 
-  const handleJoinSubmit = (message: string) => {
+  const handleJoinSubmit = (data: { message: string; birthday?: string; shareBirthday?: boolean }) => {
     if (selectedGroup) {
       joinRequestMutation.mutate({
         groupId: selectedGroup.id,
-        message,
+        message: data.message,
+        birthday: data.birthday,
+        shareBirthday: data.shareBirthday,
       });
     }
   };

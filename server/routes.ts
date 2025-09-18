@@ -85,6 +85,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update user birthday
+  app.patch('/api/users/me', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { birthday } = req.body;
+      
+      // Validate birthday format if provided (YYYY-MM-DD)
+      if (birthday && !/^\d{4}-\d{2}-\d{2}$/.test(birthday)) {
+        return res.status(400).json({ message: "Birthday must be in YYYY-MM-DD format" });
+      }
+      
+      await storage.updateUserBirthday(userId, birthday || null);
+      res.json({ message: "Birthday updated successfully" });
+    } catch (error) {
+      console.error("Error updating birthday:", error);
+      res.status(500).json({ message: "Failed to update birthday" });
+    }
+  });
+
   // Location update route
   app.post('/api/auth/location', isAuthenticated, async (req: any, res) => {
     try {
@@ -248,7 +267,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const groupId = req.params.id;
-      const { message } = req.body;
+      const { message, birthday, shareBirthday } = req.body;
       
       // Check if user already has a membership request
       const existingMembership = await storage.getUserMembershipStatus(userId, groupId);
@@ -256,10 +275,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Membership request already exists" });
       }
       
+      // Get group to check if birthday is required
+      const group = await storage.getGroup(groupId);
+      if (!group) {
+        return res.status(404).json({ message: "Group not found" });
+      }
+      
+      // Validate birthday if provided or required
+      if (birthday && !/^\d{4}-\d{2}-\d{2}$/.test(birthday)) {
+        return res.status(400).json({ message: "Birthday must be in YYYY-MM-DD format" });
+      }
+      
+      if (group.requireBirthdayToJoin && !birthday) {
+        return res.status(400).json({ message: "Birthday is required to join this group" });
+      }
+      
+      // Update user birthday if provided
+      if (birthday) {
+        await storage.updateUserBirthday(userId, birthday);
+      }
+      
       const membership = await storage.requestGroupJoin({
         groupId,
         userId,
-        message: message || ""
+        message: message || "",
+        shareBirthday: Boolean(shareBirthday)
       });
       
       res.status(201).json(membership);
@@ -308,6 +348,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching user's pending requests:", error);
       res.status(500).json({ message: "Failed to fetch user's pending requests" });
+    }
+  });
+
+  // Update membership birthday sharing preference
+  app.patch('/api/groups/:id/memberships/me', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const groupId = req.params.id;
+      const { shareBirthday } = req.body;
+      
+      // Get user's membership
+      const membership = await storage.getUserMembershipStatus(userId, groupId);
+      if (!membership) {
+        return res.status(404).json({ message: "Membership not found" });
+      }
+      
+      if (membership.status !== "approved") {
+        return res.status(400).json({ message: "Cannot update preferences for non-approved membership" });
+      }
+      
+      await storage.updateMembershipBirthdaySharing(membership.id, Boolean(shareBirthday));
+      res.json({ message: "Birthday sharing preference updated successfully" });
+    } catch (error) {
+      console.error("Error updating birthday sharing preference:", error);
+      res.status(500).json({ message: "Failed to update birthday sharing preference" });
+    }
+  });
+
+  // Get today's birthdays for a group
+  app.get('/api/groups/:id/birthdays/today', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const groupId = req.params.id;
+      
+      // Check if user is a member of the group
+      const membership = await storage.getUserMembershipStatus(userId, groupId);
+      if (!membership || membership.status !== "approved") {
+        return res.status(403).json({ message: "Access denied. You must be an approved member of this group." });
+      }
+      
+      const birthdayMembers = await storage.getGroupTodaysBirthdays(groupId);
+      res.json(birthdayMembers);
+    } catch (error) {
+      console.error("Error fetching today's birthdays:", error);
+      res.status(500).json({ message: "Failed to fetch today's birthdays" });
     }
   });
 
