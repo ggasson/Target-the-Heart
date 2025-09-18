@@ -36,7 +36,7 @@ export default function Groups() {
     queryKey: ["/api/groups"],
   });
 
-  const { data: myPendingRequests = [] } = useQuery<Array<{ group: Group; status: string; message?: string; createdAt: Date }>>>({
+  const { data: myPendingRequests = [] } = useQuery({
     queryKey: ["/api/memberships/my-requests"],
     enabled: !!user,
   });
