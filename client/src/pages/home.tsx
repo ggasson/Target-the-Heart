@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import PrayerModal from "@/components/modals/prayer-modal";
+import DailyVerse from "@/components/DailyVerse";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -193,6 +194,9 @@ export default function Home({ onTabChange }: HomeProps) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Daily Bible Verse */}
+      <DailyVerse />
 
       {/* Next Meeting */}
       {nextMeeting && (
