@@ -36,6 +36,11 @@ export default function Groups() {
     queryKey: ["/api/groups"],
   });
 
+  const { data: myPendingRequests = [] } = useQuery<Array<{ group: Group; status: string; message?: string; createdAt: Date }>>>({
+    queryKey: ["/api/memberships/my-requests"],
+    enabled: !!user,
+  });
+
   // Calculate distance between two coordinates using Haversine formula
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
     const R = 3959; // Earth's radius in miles
@@ -68,8 +73,7 @@ export default function Groups() {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(group => 
         group.name.toLowerCase().includes(query) ||
-        group.description?.toLowerCase().includes(query) ||
-        group.location?.toLowerCase().includes(query)
+        group.description?.toLowerCase().includes(query)
       );
     }
 
@@ -99,15 +103,25 @@ export default function Groups() {
         }
         break;
       case "open":
-        filtered = filtered.filter(group => group.visibility === "public");
+        filtered = filtered.filter(group => group.isPublic === true);
         break;
       case "requests":
-        // This would need additional data about join requests
+        // Show groups where user has pending join requests
+        filtered = myPendingRequests.map(req => req.group);
+        // Apply text search to pending request groups
+        if (searchQuery.trim()) {
+          const query = searchQuery.toLowerCase();
+          filtered = filtered.filter(group => 
+            group.name.toLowerCase().includes(query) ||
+            group.description?.toLowerCase().includes(query)
+          );
+        }
+        return filtered; // Return early since we don't need other filter logic
         break;
     }
 
     return filtered;
-  }, [availableGroups, searchQuery, selectedFilter, userLocation]);
+  }, [availableGroups, searchQuery, selectedFilter, userLocation, myPendingRequests]);
 
   const joinRequestMutation = useMutation({
     mutationFn: async ({ groupId, message }: { groupId: string; message: string }) => {
@@ -119,6 +133,7 @@ export default function Groups() {
         description: "Your join request has been sent to the group administrator.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/memberships/my-requests"] });
       setShowJoinModal(false);
     },
     onError: (error) => {

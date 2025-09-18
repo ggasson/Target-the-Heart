@@ -54,6 +54,7 @@ export interface IStorage {
   getGroupMemberships(groupId: string): Promise<(GroupMembership & { user: User })[]>;
   getPendingMemberships(adminUserId: string): Promise<(GroupMembership & { user: User; group: Group })[]>;
   getUserMembershipStatus(userId: string, groupId: string): Promise<GroupMembership | undefined>;
+  getUserPendingRequests(userId: string): Promise<(GroupMembership & { group: Group })[]>;
   
   // Prayer request operations
   createPrayerRequest(prayer: InsertPrayerRequest): Promise<PrayerRequest>;
@@ -349,6 +350,25 @@ export class DatabaseStorage implements IStorage {
         )
       );
     return membership;
+  }
+
+  async getUserPendingRequests(userId: string): Promise<(GroupMembership & { group: Group })[]> {
+    const pendingRequests = await db
+      .select()
+      .from(groupMemberships)
+      .innerJoin(groups, eq(groupMemberships.groupId, groups.id))
+      .where(
+        and(
+          eq(groupMemberships.userId, userId),
+          eq(groupMemberships.status, "pending")
+        )
+      )
+      .orderBy(desc(groupMemberships.createdAt));
+    
+    return pendingRequests.map(result => ({
+      ...result.group_memberships,
+      group: result.groups
+    }));
   }
 
   // Prayer request operations

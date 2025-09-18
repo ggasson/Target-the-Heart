@@ -236,6 +236,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/memberships/my-requests', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const myRequests = await storage.getUserPendingRequests(userId);
+      res.json(myRequests);
+    } catch (error) {
+      console.error("Error fetching user's pending requests:", error);
+      res.status(500).json({ message: "Failed to fetch user's pending requests" });
+    }
+  });
+
   // Prayer request routes
   app.post('/api/prayers', isAuthenticated, async (req: any, res) => {
     try {
