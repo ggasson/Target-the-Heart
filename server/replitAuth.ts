@@ -6,6 +6,7 @@ import session from "express-session";
 import type { Express, RequestHandler } from "express";
 import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
+import MemoryStore from "memorystore";
 import { storage } from "./storage";
 
 if (!process.env.REPLIT_DOMAINS) {
@@ -24,13 +25,27 @@ const getOidcConfig = memoize(
 
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
-  const pgStore = connectPg(session);
-  const sessionStore = new pgStore({
-    conString: process.env.DATABASE_URL,
-    createTableIfMissing: false,
-    ttl: sessionTtl,
-    tableName: "sessions",
-  });
+  
+  // Use memory store for development for faster performance
+  // Use PostgreSQL store for production for reliability
+  let sessionStore;
+  if (process.env.NODE_ENV === "development") {
+    // Memory store for faster development experience
+    const MemStore = MemoryStore(session);
+    sessionStore = new MemStore({
+      checkPeriod: 86400000, // prune expired entries every 24h
+    });
+  } else {
+    // PostgreSQL store for production
+    const pgStore = connectPg(session);
+    sessionStore = new pgStore({
+      conString: process.env.DATABASE_URL,
+      createTableIfMissing: false,
+      ttl: sessionTtl,
+      tableName: "sessions",
+    });
+  }
+  
   return session({
     secret: process.env.SESSION_SECRET!,
     store: sessionStore,
@@ -58,13 +73,25 @@ function updateUserSession(
 async function upsertUser(
   claims: any,
 ) {
-  await storage.upsertUser({
+  // First check if user exists to avoid unnecessary database writes
+  const existingUser = await storage.getUser(claims["sub"]);
+  
+  const newUserData = {
     id: claims["sub"],
     email: claims["email"],
     firstName: claims["first_name"],
     lastName: claims["last_name"],
     profileImageUrl: claims["profile_image_url"],
-  });
+  };
+
+  // Only upsert if user doesn't exist or data has changed
+  if (!existingUser || 
+      existingUser.email !== newUserData.email ||
+      existingUser.firstName !== newUserData.firstName ||
+      existingUser.lastName !== newUserData.lastName ||
+      existingUser.profileImageUrl !== newUserData.profileImageUrl) {
+    await storage.upsertUser(newUserData);
+  }
 }
 
 export async function setupAuth(app: Express) {

@@ -1,6 +1,18 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Loader2, Users } from "lucide-react";
 
 export default function Landing() {
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleLogin = () => {
+    setIsLoading(true);
+    // Add a small delay to show the loading state before redirect
+    setTimeout(() => {
+      window.location.href = "/api/login";
+    }, 200);
+  };
+
   return (
     <div className="min-h-screen gradient-bg flex flex-col items-center justify-center text-center px-6">
       <div className="glass-effect rounded-3xl p-8 max-w-sm w-full">
@@ -18,23 +30,28 @@ export default function Landing() {
         
         <div className="space-y-4">
           <Button 
-            onClick={() => window.location.href = "/api/login"}
-            className="w-full bg-white text-primary font-semibold py-4 rounded-xl hover:bg-white/90 transition-all duration-200 text-lg h-auto"
-            data-testid="button-signin"
+            onClick={handleLogin}
+            disabled={isLoading}
+            className="w-full bg-white text-primary font-semibold py-4 rounded-xl hover:bg-white/90 transition-all duration-200 text-lg h-auto flex items-center justify-center gap-2"
+            data-testid="button-login"
           >
-            Sign In
-          </Button>
-          <Button 
-            onClick={() => window.location.href = "/api/login"}
-            variant="outline"
-            className="w-full bg-transparent border-2 border-white text-white font-semibold py-4 rounded-xl hover:bg-white/10 transition-all duration-200 text-lg h-auto"
-            data-testid="button-create-account"
-          >
-            Create Account
+            {isLoading ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Signing you in...
+              </>
+            ) : (
+              <>
+                <Users className="w-5 h-5" />
+                Join the Community
+              </>
+            )}
           </Button>
         </div>
         
-        <p className="text-white/60 text-sm mt-6">Join prayer groups in your community</p>
+        <p className="text-white/60 text-sm mt-6">
+          Sign in or create your account to get started
+        </p>
       </div>
       
       {/* Footer */}
