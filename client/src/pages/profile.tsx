@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
@@ -56,6 +56,25 @@ export default function Profile({ onBack }: ProfileProps) {
     },
   });
 
+  // Update form when user data changes (e.g., after birthday is set during group join)
+  useEffect(() => {
+    if (user) {
+      const currentFormData = {
+        firstName: (user as any)?.firstName || "",
+        lastName: (user as any)?.lastName || "",
+        birthday: normalizeBirthdayForInput((user as any)?.birthday),
+      };
+      
+      // Only reset if there are actual changes to prevent unnecessary re-renders
+      const currentValues = form.getValues();
+      if (currentValues.firstName !== currentFormData.firstName ||
+          currentValues.lastName !== currentFormData.lastName ||
+          currentValues.birthday !== currentFormData.birthday) {
+        form.reset(currentFormData);
+      }
+    }
+  }, [user, form]);
+
   const handleSignOut = () => {
     window.location.href = "/api/logout";
   };
@@ -87,11 +106,14 @@ export default function Profile({ onBack }: ProfileProps) {
   });
 
   const handleEditProfile = () => {
-    form.reset({
+    // Always reset form with latest user data when opening edit dialog
+    const latestFormData = {
       firstName: (user as any)?.firstName || "",
       lastName: (user as any)?.lastName || "",
       birthday: normalizeBirthdayForInput((user as any)?.birthday),
-    });
+    };
+    
+    form.reset(latestFormData);
     setIsEditing(true);
   };
 

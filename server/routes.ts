@@ -292,7 +292,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Update user birthday if provided
       if (birthday) {
+        console.log(`Updating user ${userId} birthday to: ${birthday}`);
         await storage.updateUserBirthday(userId, birthday);
+        console.log(`Birthday update completed for user ${userId}`);
+      } else {
+        console.log(`No birthday provided for user ${userId}`);
       }
       
       const membership = await storage.requestGroupJoin({

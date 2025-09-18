@@ -143,6 +143,8 @@ export default function Groups() {
       });
       queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
       queryClient.invalidateQueries({ queryKey: ["/api/memberships/my-requests"] });
+      // Invalidate user auth cache since join may update user birthday
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       setShowJoinModal(false);
     },
     onError: (error) => {
