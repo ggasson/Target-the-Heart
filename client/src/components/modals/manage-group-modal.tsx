@@ -34,6 +34,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useTodaysBirthdays } from "@/hooks/useTodaysBirthdays";
 import { apiRequest } from "@/lib/queryClient";
+import { Star, Zap, Plus, Calendar, Clock, MapPin, Tag, Edit, Trash, Repeat } from "lucide-react";
 import MeetingModal from "@/components/modals/meeting-modal";
 import type { Group, Meeting, GroupInvitation } from "@shared/schema";
 
@@ -305,8 +306,32 @@ export default function ManageGroupModal({ open, onOpenChange, group }: ManageGr
     setShowMeetingModal(true);
   };
 
-  const handleCreateMeeting = () => {
-    setSelectedMeeting(null);
+  const handleCreateMeeting = (prefillWithDefaults = false) => {
+    if (prefillWithDefaults && group) {
+      // Create a mock meeting object with group defaults for prefilling
+      const defaultMeeting = {
+        id: '',
+        title: `${group.name} Meeting`,
+        groupId: group.id,
+        meetingDate: new Date().toISOString(),
+        venue: group.meetingLocation || '',
+        venueAddress: '',
+        description: '',
+        topic: '',
+        maxAttendees: '',
+        status: 'scheduled' as const,
+        isRecurring: false,
+        recurringPattern: 'weekly',
+        recurringDayOfWeek: group.meetingDay || 'Friday',
+        recurringTime: group.meetingTime || '17:45',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        _prefillMode: true, // Special flag to indicate this is for prefilling
+      };
+      setSelectedMeeting(defaultMeeting as any);
+    } else {
+      setSelectedMeeting(null);
+    }
     setShowMeetingModal(true);
   };
 
@@ -758,130 +783,257 @@ export default function ManageGroupModal({ open, onOpenChange, group }: ManageGr
 
         {activeTab === "meetings" && (
           <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-              <h3 className="font-medium text-foreground">Group Meetings</h3>
+            {/* Next Meeting Section */}
+            {(() => {
+              const upcomingMeetings = meetings
+                .filter((meeting: Meeting) => new Date(meeting.meetingDate) > new Date())
+                .sort((a: Meeting, b: Meeting) => new Date(a.meetingDate).getTime() - new Date(b.meetingDate).getTime());
+              
+              const nextMeeting = upcomingMeetings[0];
+              
+              if (nextMeeting) {
+                const meetingDate = new Date(nextMeeting.meetingDate);
+                const now = new Date();
+                
+                let timeUntil = "";
+                // Use calendar day difference instead of millisecond-based calculation
+                const nowDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                const meetingDateOnly = new Date(meetingDate.getFullYear(), meetingDate.getMonth(), meetingDate.getDate());
+                const diffDays = Math.round((meetingDateOnly.getTime() - nowDate.getTime()) / (1000 * 60 * 60 * 24));
+                
+                if (diffDays === 0) {
+                  timeUntil = "Today";
+                } else if (diffDays === 1) {
+                  timeUntil = "Tomorrow";
+                } else if (diffDays <= 7) {
+                  timeUntil = `In ${diffDays} days`;
+                } else {
+                  const weeks = Math.floor(diffDays / 7);
+                  timeUntil = `${weeks} week${weeks > 1 ? 's' : ''} away`;
+                }
+                
+                return (
+                  <Card className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border-blue-200 dark:border-blue-800" data-testid="card-next-meeting">
+                    <CardContent className="p-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <Star className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                            <h3 className="font-semibold text-blue-900 dark:text-blue-100">Next Meeting</h3>
+                            <Badge 
+                              variant="secondary" 
+                              className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200"
+                              data-testid="text-next-meeting-time"
+                            >
+                              {timeUntil}
+                            </Badge>
+                          </div>
+                          <h4 className="font-medium text-lg text-foreground" data-testid="text-next-meeting-title">{nextMeeting.title}</h4>
+                          {nextMeeting.topic && (
+                            <p className="text-sm text-muted-foreground">
+                              <i className="fas fa-tag mr-1"></i>
+                              {nextMeeting.topic}
+                            </p>
+                          )}
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm">
+                            <span className="flex items-center text-blue-700 dark:text-blue-300">
+                              <i className="fas fa-calendar mr-1"></i>
+                              {meetingDate.toLocaleDateString()}
+                            </span>
+                            <span className="flex items-center text-blue-700 dark:text-blue-300">
+                              <i className="fas fa-clock mr-1"></i>
+                              {meetingDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                            {nextMeeting.venue && (
+                              <span className="flex items-center text-blue-700 dark:text-blue-300">
+                                <i className="fas fa-map-marker-alt mr-1"></i>
+                                {nextMeeting.venue}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleEditMeeting(nextMeeting)}
+                          className="border-blue-300 hover:bg-blue-50 dark:border-blue-600 dark:hover:bg-blue-900/30 w-full sm:w-auto"
+                          data-testid="button-edit-next-meeting"
+                        >
+                          <Edit className="w-4 h-4 mr-2" />
+                          Manage Meeting
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              }
+              return null;
+            })()}
+
+            {/* Quick Schedule & Actions Section */}
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Button
+                onClick={() => handleCreateMeeting(true)}
+                size="sm"
+                className="flex-1 sm:flex-none bg-green-600 hover:bg-green-700 text-white"
+                data-testid="button-quick-schedule"
+              >
+                <Zap className="w-4 h-4 mr-2" />
+                Quick Schedule
+              </Button>
               <Button
                 onClick={handleCreateMeeting}
                 size="sm"
-                className="w-full sm:w-auto"
+                variant="outline"
+                className="flex-1 sm:flex-none"
                 data-testid="button-create-meeting"
               >
-                <i className="fas fa-plus mr-2"></i>
-                New Meeting
+                <Plus className="w-4 h-4 mr-2" />
+                Custom Meeting
               </Button>
             </div>
             
-            {meetings.length === 0 ? (
-              <div className="text-center py-8">
-                <i className="fas fa-calendar text-4xl text-muted-foreground mb-4"></i>
-                <p className="text-muted-foreground mb-4">No meetings scheduled yet.</p>
-                <Button
-                  onClick={handleCreateMeeting}
-                  variant="outline"
-                  data-testid="button-create-first-meeting"
-                >
-                  Schedule Your First Meeting
-                </Button>
+            {/* All Meetings Section */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="font-medium text-foreground">All Scheduled Meetings</h3>
+                <span className="text-sm text-muted-foreground" data-testid="text-meeting-count">
+                  {meetings.length} {meetings.length === 1 ? 'meeting' : 'meetings'}
+                </span>
               </div>
-            ) : (
-              <div className="space-y-3">
-                {meetings.map((meeting: Meeting) => {
-                  const meetingDate = new Date(meeting.meetingDate);
-                  const isUpcoming = meetingDate > new Date();
-                  
-                  return (
-                    <Card key={meeting.id}>
-                      <CardContent className="p-3 sm:p-4">
-                        <div className="space-y-3">
-                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                            <div className="flex-1 min-w-0 space-y-2">
-                              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                                <h4 className="font-medium text-foreground truncate">{meeting.title}</h4>
-                                <div className="flex gap-1 flex-wrap">
-                                  <Badge 
-                                    variant={meeting.status === "scheduled" ? "default" : meeting.status === "cancelled" ? "destructive" : "secondary"}
-                                    className="text-xs"
-                                  >
-                                    {meeting.status}
-                                  </Badge>
-                                  {isUpcoming && (
-                                    <Badge variant="outline" className="text-xs">
-                                      Upcoming
+              
+              {meetings.length === 0 ? (
+                <div className="text-center py-8">
+                  <Calendar className="w-16 h-16 text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground mb-4">No meetings scheduled yet.</p>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Use Quick Schedule to create a meeting with your default schedule, or Custom Meeting for full control.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                    <Button
+                      onClick={() => handleCreateMeeting(true)}
+                      className="bg-green-600 hover:bg-green-700 text-white"
+                      data-testid="button-quick-schedule-first"
+                    >
+                      <Zap className="w-4 h-4 mr-2" />
+                      Quick Schedule
+                    </Button>
+                    <Button
+                      onClick={handleCreateMeeting}
+                      variant="outline"
+                      data-testid="button-create-first-meeting"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Custom Meeting
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {meetings.map((meeting: Meeting) => {
+                    const meetingDate = new Date(meeting.meetingDate);
+                    const isUpcoming = meetingDate > new Date();
+                    const isNextMeeting = meetings
+                      .filter((m: Meeting) => new Date(m.meetingDate) > new Date())
+                      .sort((a: Meeting, b: Meeting) => new Date(a.meetingDate).getTime() - new Date(b.meetingDate).getTime())[0]?.id === meeting.id;
+                    
+                    // Skip the next meeting since it's shown prominently above
+                    if (isNextMeeting) return null;
+                    
+                    return (
+                      <Card key={meeting.id}>
+                        <CardContent className="p-3 sm:p-4">
+                          <div className="space-y-3">
+                            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                              <div className="flex-1 min-w-0 space-y-2">
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                                  <h4 className="font-medium text-foreground truncate">{meeting.title}</h4>
+                                  <div className="flex gap-1 flex-wrap">
+                                    <Badge 
+                                      variant={meeting.status === "scheduled" ? "default" : meeting.status === "cancelled" ? "destructive" : "secondary"}
+                                      className="text-xs"
+                                    >
+                                      {meeting.status}
                                     </Badge>
-                                  )}
+                                    {isUpcoming && (
+                                      <Badge variant="outline" className="text-xs">
+                                        Upcoming
+                                      </Badge>
+                                    )}
+                                  </div>
                                 </div>
+                                
+                                {meeting.topic && (
+                                  <p className="text-sm text-muted-foreground">
+                                    <i className="fas fa-tag mr-1"></i>
+                                    Topic: {meeting.topic}
+                                  </p>
+                                )}
+                                
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm text-muted-foreground">
+                                  <span className="flex items-center">
+                                    <i className="fas fa-calendar mr-1"></i>
+                                    {meetingDate.toLocaleDateString()}
+                                  </span>
+                                  <span className="flex items-center">
+                                    <i className="fas fa-clock mr-1"></i>
+                                    {meetingDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  </span>
+                                </div>
+                                
+                                {meeting.venue && (
+                                  <p className="text-sm text-muted-foreground">
+                                    <i className="fas fa-map-marker-alt mr-1"></i>
+                                    {meeting.venue}
+                                  </p>
+                                )}
+                                
+                                {meeting.description && (
+                                  <p className="text-sm text-muted-foreground">
+                                    {meeting.description}
+                                  </p>
+                                )}
+                                
+                                {meeting.isRecurring && (
+                                  <Badge variant="outline" className="text-xs">
+                                    <i className="fas fa-repeat mr-1"></i>
+                                    Recurring {meeting.recurringPattern}
+                                  </Badge>
+                                )}
                               </div>
                               
-                              {meeting.topic && (
-                                <p className="text-sm text-muted-foreground">
-                                  <i className="fas fa-tag mr-1"></i>
-                                  Topic: {meeting.topic}
-                                </p>
-                              )}
-                              
-                              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm text-muted-foreground">
-                                <span className="flex items-center">
-                                  <i className="fas fa-calendar mr-1"></i>
-                                  {meetingDate.toLocaleDateString()}
-                                </span>
-                                <span className="flex items-center">
-                                  <i className="fas fa-clock mr-1"></i>
-                                  {meetingDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                </span>
+                              <div className="flex gap-2 w-full sm:w-auto">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleEditMeeting(meeting)}
+                                  className="flex-1 sm:flex-none"
+                                  data-testid={`button-edit-meeting-${meeting.id}`}
+                                >
+                                  <i className="fas fa-edit mr-1 sm:mr-0"></i>
+                                  <span className="sm:hidden">Edit</span>
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleDeleteMeeting(meeting.id)}
+                                  disabled={deleteMeetingMutation.isPending}
+                                  className="flex-1 sm:flex-none"
+                                  data-testid={`button-delete-meeting-${meeting.id}`}
+                                >
+                                  <i className="fas fa-trash mr-1 sm:mr-0"></i>
+                                  <span className="sm:hidden">Delete</span>
+                                </Button>
                               </div>
-                              
-                              {meeting.venue && (
-                                <p className="text-sm text-muted-foreground">
-                                  <i className="fas fa-map-marker-alt mr-1"></i>
-                                  {meeting.venue}
-                                </p>
-                              )}
-                              
-                              {meeting.description && (
-                                <p className="text-sm text-muted-foreground">
-                                  {meeting.description}
-                                </p>
-                              )}
-                              
-                              {meeting.isRecurring && (
-                                <Badge variant="outline" className="text-xs">
-                                  <i className="fas fa-repeat mr-1"></i>
-                                  Recurring {meeting.recurringPattern}
-                                </Badge>
-                              )}
-                            </div>
-                            
-                            <div className="flex gap-2 w-full sm:w-auto">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleEditMeeting(meeting)}
-                                className="flex-1 sm:flex-none"
-                                data-testid={`button-edit-meeting-${meeting.id}`}
-                              >
-                                <i className="fas fa-edit mr-1 sm:mr-0"></i>
-                                <span className="sm:hidden">Edit</span>
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleDeleteMeeting(meeting.id)}
-                                disabled={deleteMeetingMutation.isPending}
-                                className="flex-1 sm:flex-none"
-                                data-testid={`button-delete-meeting-${meeting.id}`}
-                              >
-                                <i className="fas fa-trash mr-1 sm:mr-0"></i>
-                                <span className="sm:hidden">Delete</span>
-                              </Button>
                             </div>
                           </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-            )}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         )}
 

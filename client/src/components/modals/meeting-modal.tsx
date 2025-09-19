@@ -78,23 +78,46 @@ export default function MeetingModal({ open, onOpenChange, groupId, meeting }: M
 
   useEffect(() => {
     if (meeting) {
-      const meetingDate = new Date(meeting.meetingDate);
-      setSelectedDate(meetingDate);
-      setSelectedTime(format(meetingDate, "HH:mm"));
-      form.reset({
-        title: meeting.title,
-        description: meeting.description || "",
-        topic: meeting.topic || "",
-        meetingDate: meetingDate.toISOString().slice(0, 16),
-        venue: meeting.venue || "",
-        venueAddress: meeting.venueAddress || "",
-        maxAttendees: meeting.maxAttendees || "",
-        isRecurring: meeting.isRecurring || false,
-        recurringPattern: meeting.recurringPattern || "weekly",
-        recurringDayOfWeek: meeting.recurringDayOfWeek || "Friday",
-        recurringTime: meeting.recurringTime || "17:45",
-      });
-      setIsRecurring(meeting.isRecurring || false);
+      const isPrefillMode = (meeting as any)._prefillMode;
+      
+      if (isPrefillMode) {
+        // Quick Schedule mode - prefill with group defaults but treat as new meeting
+        setSelectedDate(undefined);
+        setSelectedTime(meeting.recurringTime || "17:45");
+        form.reset({
+          title: meeting.title || "",
+          description: meeting.description || "",
+          topic: meeting.topic || "",
+          meetingDate: "",
+          venue: meeting.venue || "",
+          venueAddress: meeting.venueAddress || "",
+          maxAttendees: meeting.maxAttendees || "",
+          isRecurring: true, // Default to recurring for quick schedule
+          recurringPattern: meeting.recurringPattern || "weekly",
+          recurringDayOfWeek: meeting.recurringDayOfWeek || "Friday",
+          recurringTime: meeting.recurringTime || "17:45",
+        });
+        setIsRecurring(true);
+      } else {
+        // Edit existing meeting mode
+        const meetingDate = new Date(meeting.meetingDate);
+        setSelectedDate(meetingDate);
+        setSelectedTime(format(meetingDate, "HH:mm"));
+        form.reset({
+          title: meeting.title,
+          description: meeting.description || "",
+          topic: meeting.topic || "",
+          meetingDate: meetingDate.toISOString().slice(0, 16),
+          venue: meeting.venue || "",
+          venueAddress: meeting.venueAddress || "",
+          maxAttendees: meeting.maxAttendees || "",
+          isRecurring: meeting.isRecurring || false,
+          recurringPattern: meeting.recurringPattern || "weekly",
+          recurringDayOfWeek: meeting.recurringDayOfWeek || "Friday",
+          recurringTime: meeting.recurringTime || "17:45",
+        });
+        setIsRecurring(meeting.isRecurring || false);
+      }
     } else {
       setSelectedDate(undefined);
       setSelectedTime("17:45");
@@ -123,9 +146,14 @@ export default function MeetingModal({ open, onOpenChange, groupId, meeting }: M
         // For recurring meetings, calculate the next occurrence
         const now = new Date();
         const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-        const targetDay = daysOfWeek.indexOf(data.recurringDayOfWeek || "Friday");
+        // Normalize day of week to Title Case to match daysOfWeek array
+        const dayName = (data.recurringDayOfWeek || "Friday").charAt(0).toUpperCase() + (data.recurringDayOfWeek || "Friday").slice(1).toLowerCase();
+        const targetDay = daysOfWeek.indexOf(dayName);
+        
+        // Fallback to Friday if day not found
+        const finalTargetDay = targetDay === -1 ? 5 : targetDay; // 5 = Friday
         const today = now.getDay();
-        let daysUntilTarget = (targetDay - today + 7) % 7;
+        let daysUntilTarget = (finalTargetDay - today + 7) % 7;
         if (daysUntilTarget === 0) daysUntilTarget = 7; // Next week if today is the target day
         
         const targetDate = new Date(now);
@@ -174,9 +202,14 @@ export default function MeetingModal({ open, onOpenChange, groupId, meeting }: M
         // For recurring meetings, calculate the next occurrence
         const now = new Date();
         const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-        const targetDay = daysOfWeek.indexOf(data.recurringDayOfWeek || "Friday");
+        // Normalize day of week to Title Case to match daysOfWeek array
+        const dayName = (data.recurringDayOfWeek || "Friday").charAt(0).toUpperCase() + (data.recurringDayOfWeek || "Friday").slice(1).toLowerCase();
+        const targetDay = daysOfWeek.indexOf(dayName);
+        
+        // Fallback to Friday if day not found
+        const finalTargetDay = targetDay === -1 ? 5 : targetDay; // 5 = Friday
         const today = now.getDay();
-        let daysUntilTarget = (targetDay - today + 7) % 7;
+        let daysUntilTarget = (finalTargetDay - today + 7) % 7;
         if (daysUntilTarget === 0) daysUntilTarget = 7; // Next week if today is the target day
         
         const targetDate = new Date(now);
@@ -216,9 +249,13 @@ export default function MeetingModal({ open, onOpenChange, groupId, meeting }: M
   });
 
   const onSubmit = (data: MeetingFormData) => {
-    if (meeting) {
+    const isPrefillMode = meeting && (meeting as any)._prefillMode;
+    
+    if (meeting && !isPrefillMode) {
+      // Edit existing meeting
       updateMutation.mutate(data);
     } else {
+      // Create new meeting (either from scratch or from quick schedule prefill)
       createMutation.mutate(data);
     }
   };
@@ -230,7 +267,9 @@ export default function MeetingModal({ open, onOpenChange, groupId, meeting }: M
       <DialogContent className="max-w-md mx-auto max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {meeting ? "Edit Meeting" : "Create New Meeting"}
+            {meeting && (meeting as any)._prefillMode ? "Quick Schedule Meeting" 
+             : meeting ? "Edit Meeting" 
+             : "Create New Meeting"}
           </DialogTitle>
         </DialogHeader>
 
