@@ -52,7 +52,7 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
       email: user.email,
       firstName: user.displayName?.split(' ')[0] || user.email.split('@')[0],
       lastName: user.displayName?.split(' ').slice(1).join(' ') || '',
-      avatar: user.photoUrl
+      profileImageUrl: user.photoUrl
     });
 
     next();
