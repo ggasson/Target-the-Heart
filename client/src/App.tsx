@@ -112,14 +112,36 @@ function MainApp() {
 }
 
 function Router() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
+  
+  console.log('🔍 Router state:', {
+    isAuthenticated,
+    isLoading,
+    userEmail: user?.email,
+    timestamp: new Date().toISOString()
+  });
+
+  // Show loading screen during auth check
+  if (isLoading) {
+    console.log('⏳ Showing loading screen...');
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 to-purple-700">
+        <div className="text-center text-white">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  console.log('🚦 Router decision:', isAuthenticated ? 'Show MainApp' : 'Show Landing');
 
   return (
     <Switch>
       {/* Invitation route - accessible to both authenticated and unauthenticated users */}
       <Route path="/invite/:token" component={InvitePage} />
       
-      {isLoading || !isAuthenticated ? (
+      {!isAuthenticated ? (
         <Route path="/" component={Landing} />
       ) : (
         <>

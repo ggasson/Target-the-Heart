@@ -39,13 +39,23 @@ export function useFirebaseAuth() {
     });
 
     // Handle redirect result (for OAuth returns)
+    console.log('🚀 Starting redirect result check...');
     handleRedirectResult()
       .then((result) => {
         if (!mounted) return;
-        // Auth state listener will handle setting the user
+        
+        if (result?.user) {
+          console.log('✅ OAuth redirect successful!', {
+            email: result.user.email,
+            displayName: result.user.displayName,
+            uid: result.user.uid
+          });
+        } else {
+          console.log('🔄 No OAuth redirect result (direct page load)');
+        }
       })
       .catch((error) => {
-        console.error('Authentication error:', error);
+        console.error('❌ OAuth redirect error:', error);
         if (mounted) {
           setLoading(false);
         }
