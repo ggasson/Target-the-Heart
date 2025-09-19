@@ -1,7 +1,7 @@
 // Firebase configuration and authentication setup
 // This replaces the Replit authentication with Google OAuth via Firebase
 import { initializeApp } from "firebase/app";
-import { getAuth, signInWithPopup, signOut, onAuthStateChanged, GoogleAuthProvider, User, setPersistence, browserLocalPersistence } from "firebase/auth";
+import { getAuth, signInWithPopup, signOut, onAuthStateChanged, GoogleAuthProvider, User, setPersistence, browserLocalPersistence, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, sendPasswordResetEmail, updateProfile } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -35,6 +35,59 @@ export const signInWithGoogle = () => {
 // Sign out
 export const signOutUser = () => {
   return signOut(auth);
+};
+
+// Email/Password Authentication
+export const signUpWithEmail = async (email: string, password: string, firstName?: string, lastName?: string) => {
+  try {
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
+    
+    // Update profile with name if provided
+    if (firstName || lastName) {
+      await updateProfile(user, {
+        displayName: `${firstName || ''} ${lastName || ''}`.trim()
+      });
+    }
+    
+    // Send email verification
+    await sendEmailVerification(user);
+    
+    return { user, emailSent: true };
+  } catch (error: any) {
+    console.error('Sign up error:', error);
+    throw error;
+  }
+};
+
+export const signInWithEmail = async (email: string, password: string) => {
+  try {
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    return userCredential.user;
+  } catch (error: any) {
+    console.error('Sign in error:', error);
+    throw error;
+  }
+};
+
+export const resendVerificationEmail = async (user: User) => {
+  try {
+    await sendEmailVerification(user);
+    return true;
+  } catch (error: any) {
+    console.error('Resend verification error:', error);
+    throw error;
+  }
+};
+
+export const resetPassword = async (email: string) => {
+  try {
+    await sendPasswordResetEmail(auth, email);
+    return true;
+  } catch (error: any) {
+    console.error('Password reset error:', error);
+    throw error;
+  }
 };
 
 // Auth state listener
