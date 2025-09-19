@@ -9,9 +9,12 @@ export default function Landing() {
   const handleLogin = async () => {
     setIsLoading(true);
     try {
-      await signInWithGoogle();
+      console.log('🚀 Starting Google sign-in popup...');
+      const result = await signInWithGoogle();
+      console.log('✅ Google sign-in successful!', result.user?.email);
+      // Auth state listener will handle the navigation automatically
     } catch (error) {
-      console.error("Login error:", error);
+      console.error("❌ Login error:", error);
       setIsLoading(false);
     }
   };

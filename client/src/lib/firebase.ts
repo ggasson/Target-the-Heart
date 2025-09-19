@@ -1,7 +1,7 @@
 // Firebase configuration and authentication setup
 // This replaces the Replit authentication with Google OAuth via Firebase
 import { initializeApp } from "firebase/app";
-import { getAuth, signInWithRedirect, signOut, onAuthStateChanged, GoogleAuthProvider, getRedirectResult, User, setPersistence, browserLocalPersistence } from "firebase/auth";
+import { getAuth, signInWithPopup, signOut, onAuthStateChanged, GoogleAuthProvider, User, setPersistence, browserLocalPersistence } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -27,19 +27,14 @@ googleProvider.setCustomParameters({
   prompt: 'select_account'
 });
 
-// Sign in with Google
+// Sign in with Google using popup (works better with Replit domains)
 export const signInWithGoogle = () => {
-  return signInWithRedirect(auth, googleProvider);
+  return signInWithPopup(auth, googleProvider);
 };
 
 // Sign out
 export const signOutUser = () => {
   return signOut(auth);
-};
-
-// Handle redirect result (call this on app load)
-export const handleRedirectResult = () => {
-  return getRedirectResult(auth);
 };
 
 // Auth state listener
