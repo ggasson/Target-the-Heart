@@ -10,6 +10,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { signOutUser } from "@/lib/firebase";
 import { insertUserSchema } from "@shared/schema";
 import { z } from "zod";
 
@@ -75,8 +76,13 @@ export default function Profile({ onBack }: ProfileProps) {
     }
   }, [user, form]);
 
-  const handleSignOut = () => {
-    window.location.href = "/api/logout";
+  const handleSignOut = async () => {
+    try {
+      await signOutUser();
+      // Firebase will automatically update the auth state and redirect to landing page
+    } catch (error) {
+      console.error("Sign out error:", error);
+    }
   };
 
   const updateProfileMutation = useMutation({
