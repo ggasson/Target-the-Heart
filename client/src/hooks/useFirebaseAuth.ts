@@ -22,11 +22,13 @@ export function useFirebaseAuth() {
     // Check for redirect result first (for Google sign-in)
     getGoogleRedirectResult().then((result) => {
       if (result && result.user) {
-        console.log('Google redirect sign-in successful:', result.user.email);
+        console.log('✅ Google redirect sign-in successful:', result.user.email);
+      } else {
+        console.log('ℹ️ No Google redirect result found');
       }
     }).catch((error) => {
       if (error.code !== 'auth/null-user') { // Ignore null-user error (no redirect)
-        console.error('Google redirect error:', error);
+        console.error('❌ Google redirect error:', error.code, error.message);
       }
     });
 
@@ -34,13 +36,16 @@ export function useFirebaseAuth() {
     const unsubscribe = onAuthStateChange(async (firebaseUser: User | null) => {
       if (!mounted) return;
       
+      console.log('🔄 Auth state changed:', firebaseUser ? `User: ${firebaseUser.email}` : 'No user');
+      
       if (firebaseUser) {
         // Get the ID token for API requests
         try {
           const idToken = await firebaseUser.getIdToken();
           setToken(idToken);
+          console.log('🔑 ID token obtained for:', firebaseUser.email);
         } catch (error) {
-          console.error('Error getting ID token:', error);
+          console.error('❌ Error getting ID token:', error);
         }
         
         // Convert Firebase user to our app user format
@@ -52,11 +57,14 @@ export function useFirebaseAuth() {
           avatar: firebaseUser.photoURL || undefined,
         };
         setUser(appUser);
+        console.log('👤 User state set:', appUser.email);
       } else {
         setUser(null);
         setToken(null);
+        console.log('🚪 User logged out - clearing state');
       }
       setLoading(false);
+      console.log('✅ Auth loading complete');
     });
 
     return () => {

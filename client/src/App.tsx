@@ -112,10 +112,13 @@ function MainApp() {
 }
 
 function Router() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
+
+  console.log('🔍 Router state check:', { isAuthenticated, isLoading, userEmail: user?.email });
 
   // Show loading screen during auth check
   if (isLoading) {
+    console.log('⏳ Showing loading screen - auth check in progress');
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 to-purple-700">
         <div className="text-center text-white">
