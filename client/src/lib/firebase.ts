@@ -1,7 +1,7 @@
 // Firebase configuration and authentication setup
 // This replaces the Replit authentication with Google OAuth via Firebase
 import { initializeApp } from "firebase/app";
-import { getAuth, signInWithRedirect, signOut, onAuthStateChanged, GoogleAuthProvider, getRedirectResult, User } from "firebase/auth";
+import { getAuth, signInWithRedirect, signOut, onAuthStateChanged, GoogleAuthProvider, getRedirectResult, User, setPersistence, browserLocalPersistence } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -15,8 +15,17 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
+// Set up auth persistence to local storage (survives browser sessions)
+setPersistence(auth, browserLocalPersistence).catch((error) => {
+  console.error('Error setting auth persistence:', error);
+});
+
 // Google OAuth provider
 const googleProvider = new GoogleAuthProvider();
+// Set custom parameters to ensure we get the user's full profile
+googleProvider.setCustomParameters({
+  prompt: 'select_account'
+});
 
 // Sign in with Google
 export const signInWithGoogle = () => {
