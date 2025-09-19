@@ -1,7 +1,7 @@
 // Firebase authentication hook to replace the Replit auth hook
 import { useState, useEffect } from 'react';
 import { User } from 'firebase/auth';
-import { onAuthStateChange } from '@/lib/firebase';
+import { onAuthStateChange, auth } from '@/lib/firebase';
 
 interface FirebaseUser {
   id: string;
@@ -14,17 +14,24 @@ interface FirebaseUser {
 export function useFirebaseAuth() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [token, setToken] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
-    console.log('🚀 Setting up Firebase auth listener...');
 
     // Set up auth state listener 
-    const unsubscribe = onAuthStateChange((firebaseUser: User | null) => {
+    const unsubscribe = onAuthStateChange(async (firebaseUser: User | null) => {
       if (!mounted) return;
       
       if (firebaseUser) {
-        console.log('✅ User authenticated:', firebaseUser.email);
+        // Get the ID token for API requests
+        try {
+          const idToken = await firebaseUser.getIdToken();
+          setToken(idToken);
+        } catch (error) {
+          console.error('Error getting ID token:', error);
+        }
+        
         // Convert Firebase user to our app user format
         const appUser: FirebaseUser = {
           id: firebaseUser.uid,
@@ -35,8 +42,8 @@ export function useFirebaseAuth() {
         };
         setUser(appUser);
       } else {
-        console.log('🔄 No user authenticated');
         setUser(null);
+        setToken(null);
       }
       setLoading(false);
     });
@@ -47,5 +54,18 @@ export function useFirebaseAuth() {
     };
   }, []);
 
-  return { user, loading };
+  // Function to get fresh token for API requests
+  const getToken = async () => {
+    if (auth.currentUser) {
+      try {
+        return await auth.currentUser.getIdToken(true); // Force refresh
+      } catch (error) {
+        console.error('Error getting fresh token:', error);
+        return null;
+      }
+    }
+    return null;
+  };
+
+  return { user, loading, token, getToken };
 }

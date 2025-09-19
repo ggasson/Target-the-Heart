@@ -1,13 +1,12 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { isAuthenticated } from "./firebaseAuth";
 import { insertGroupSchema, insertPrayerRequestSchema, insertGroupMembershipSchema, insertChatMessageSchema, insertMeetingSchema, insertMeetingRsvpSchema, insertGroupInvitationSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Auth middleware
-  await setupAuth(app);
+  // No auth setup needed for Firebase (handled in middleware)
 
   // Daily verse route
   app.get('/api/daily-verse', async (req, res) => {

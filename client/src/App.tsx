@@ -112,18 +112,10 @@ function MainApp() {
 }
 
 function Router() {
-  const { isAuthenticated, isLoading, user } = useAuth();
-  
-  console.log('🔍 Router state:', {
-    isAuthenticated,
-    isLoading,
-    userEmail: user?.email,
-    timestamp: new Date().toISOString()
-  });
+  const { isAuthenticated, isLoading } = useAuth();
 
   // Show loading screen during auth check
   if (isLoading) {
-    console.log('⏳ Showing loading screen...');
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 to-purple-700">
         <div className="text-center text-white">
@@ -133,8 +125,6 @@ function Router() {
       </div>
     );
   }
-
-  console.log('🚦 Router decision:', isAuthenticated ? 'Show MainApp' : 'Show Landing');
 
   return (
     <Switch>
