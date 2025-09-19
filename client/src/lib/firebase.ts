@@ -27,9 +27,9 @@ googleProvider.setCustomParameters({
   prompt: 'select_account'
 });
 
-// Sign in with Google using redirect (avoids popup blockers)
+// Sign in with Google using popup (avoids sessionStorage issues)
 export const signInWithGoogle = () => {
-  return signInWithRedirect(auth, googleProvider);
+  return signInWithPopup(auth, googleProvider);
 };
 
 // Get redirect result for Google sign-in
