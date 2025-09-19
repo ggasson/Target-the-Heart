@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import JoinRequestModal from "@/components/modals/join-request-modal";
@@ -17,6 +18,8 @@ import type { Group } from "@shared/schema";
 export default function Groups() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFilter, setSelectedFilter] = useState("all");
+  const [selectedAudience, setSelectedAudience] = useState<string>("all");
+  const [selectedPurpose, setSelectedPurpose] = useState<string>("all");
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
   const [showJoinModal, setShowJoinModal] = useState(false);
@@ -77,7 +80,17 @@ export default function Groups() {
       );
     }
 
-    // Apply filters
+    // Apply audience filter
+    if (selectedAudience !== "all") {
+      filtered = filtered.filter(group => group.audience === selectedAudience);
+    }
+
+    // Apply purpose filter
+    if (selectedPurpose !== "all") {
+      filtered = filtered.filter(group => group.purpose === selectedPurpose);
+    }
+
+    // Apply main filters
     switch (selectedFilter) {
       case "nearby":
         if (userLocation) {
@@ -107,7 +120,7 @@ export default function Groups() {
         break;
       case "requests":
         // Show groups where user has pending join requests
-        filtered = myPendingRequests.map(req => req.group);
+        filtered = (myPendingRequests as any[]).map((req: any) => req.group);
         // Apply text search to pending request groups
         if (searchQuery.trim()) {
           const query = searchQuery.toLowerCase();
@@ -116,12 +129,19 @@ export default function Groups() {
             group.description?.toLowerCase().includes(query)
           );
         }
+        // Apply audience/purpose filters even for requests
+        if (selectedAudience !== "all") {
+          filtered = filtered.filter(group => group.audience === selectedAudience);
+        }
+        if (selectedPurpose !== "all") {
+          filtered = filtered.filter(group => group.purpose === selectedPurpose);
+        }
         return filtered; // Return early since we don't need other filter logic
         break;
     }
 
     return filtered;
-  }, [availableGroups, searchQuery, selectedFilter, userLocation, myPendingRequests]);
+  }, [availableGroups, searchQuery, selectedFilter, selectedAudience, selectedPurpose, userLocation, myPendingRequests]);
 
   const joinRequestMutation = useMutation({
     mutationFn: async ({ groupId, message, birthday, shareBirthday }: { 
@@ -226,6 +246,55 @@ export default function Groups() {
             {filter.label}
           </Button>
         ))}
+      </div>
+
+      {/* Advanced Filters */}
+      <div className="flex flex-col sm:flex-row gap-3 mb-6">
+        <div className="flex-1">
+          <Select value={selectedAudience} onValueChange={setSelectedAudience}>
+            <SelectTrigger className="w-full" data-testid="select-filter-audience">
+              <SelectValue placeholder="Filter by audience" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Audiences</SelectItem>
+              <SelectItem value="men_only">Men Only</SelectItem>
+              <SelectItem value="women_only">Women Only</SelectItem>
+              <SelectItem value="coed">Everyone (Co-ed)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex-1">
+          <Select value={selectedPurpose} onValueChange={setSelectedPurpose}>
+            <SelectTrigger className="w-full" data-testid="select-filter-purpose">
+              <SelectValue placeholder="Filter by purpose" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Purposes</SelectItem>
+              <SelectItem value="prayer">Prayer & Worship</SelectItem>
+              <SelectItem value="bible_study">Bible Study</SelectItem>
+              <SelectItem value="fellowship">Fellowship</SelectItem>
+              <SelectItem value="youth">Youth</SelectItem>
+              <SelectItem value="marriage_couples">Marriage & Couples</SelectItem>
+              <SelectItem value="recovery_healing">Recovery & Healing</SelectItem>
+              <SelectItem value="outreach_service">Outreach & Service</SelectItem>
+              <SelectItem value="other">Other</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        {(selectedAudience !== "all" || selectedPurpose !== "all") && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setSelectedAudience("all");
+              setSelectedPurpose("all");
+            }}
+            className="whitespace-nowrap"
+            data-testid="button-clear-filters"
+          >
+            Clear Filters
+          </Button>
+        )}
       </div>
 
       {/* View Toggle */}

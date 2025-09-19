@@ -22,6 +22,51 @@ export default function GroupCard({ group, isMember, onJoinRequest, onManageGrou
     return isPublic ? "Open" : "Private";
   };
 
+  const getAudienceDisplay = (audience: string) => {
+    switch (audience) {
+      case "men_only": return "Men Only";
+      case "women_only": return "Women Only";  
+      case "coed": return "Everyone";
+      default: return "Everyone";
+    }
+  };
+
+  const getPurposeDisplay = (purpose: string) => {
+    switch (purpose) {
+      case "prayer": return "Prayer & Worship";
+      case "bible_study": return "Bible Study";
+      case "fellowship": return "Fellowship";
+      case "youth": return "Youth";
+      case "marriage_couples": return "Marriage & Couples";
+      case "recovery_healing": return "Recovery & Healing";
+      case "outreach_service": return "Outreach & Service";
+      case "other": return "Other";
+      default: return "Prayer & Worship";
+    }
+  };
+
+  const getAudienceColor = (audience: string) => {
+    switch (audience) {
+      case "men_only": return "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200";
+      case "women_only": return "bg-pink-100 text-pink-700 dark:bg-pink-900 dark:text-pink-200";
+      case "coed": return "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200";
+      default: return "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200";
+    }
+  };
+
+  const getPurposeColor = (purpose: string) => {
+    switch (purpose) {
+      case "prayer": return "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-200";
+      case "bible_study": return "bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200";
+      case "fellowship": return "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-200";
+      case "youth": return "bg-cyan-100 text-cyan-700 dark:bg-cyan-900 dark:text-cyan-200";
+      case "marriage_couples": return "bg-rose-100 text-rose-700 dark:bg-rose-900 dark:text-rose-200";
+      case "recovery_healing": return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-200";
+      case "outreach_service": return "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-200";
+      default: return "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-200";
+    }
+  };
+
   const isAdmin = (user as any)?.id === group.adminId;
 
   return (
@@ -54,9 +99,35 @@ export default function GroupCard({ group, isMember, onJoinRequest, onManageGrou
           </Badge>
         </div>
 
+        {/* Group Characteristics Badges */}
+        <div className="flex flex-wrap gap-2 mb-3">
+          {group.audience && (
+            <Badge 
+              className={`text-xs ${getAudienceColor(group.audience)}`}
+              data-testid={`badge-group-audience-${group.id}`}
+            >
+              {getAudienceDisplay(group.audience)}
+            </Badge>
+          )}
+          {group.purpose && (
+            <Badge 
+              className={`text-xs ${getPurposeColor(group.purpose)}`}
+              data-testid={`badge-group-purpose-${group.id}`}
+            >
+              {getPurposeDisplay(group.purpose)}
+            </Badge>
+          )}
+        </div>
+
         {group.description && (
           <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
             {group.description}
+          </p>
+        )}
+
+        {group.purposeTagline && (
+          <p className="text-sm text-blue-600 dark:text-blue-400 mb-3 italic" data-testid={`text-group-tagline-${group.id}`}>
+            "{group.purposeTagline}"
           </p>
         )}
 
@@ -64,7 +135,7 @@ export default function GroupCard({ group, isMember, onJoinRequest, onManageGrou
           <div className="flex items-center text-sm text-muted-foreground mb-3">
             <i className="fas fa-calendar-alt mr-2"></i>
             <span data-testid={`text-group-schedule-${group.id}`}>
-              Every {group.meetingDay}, {group.meetingTime}
+              <span className="font-medium">Default Schedule:</span> Every {group.meetingDay}, {group.meetingTime}
             </span>
           </div>
         )}
