@@ -98,6 +98,7 @@ export default function Landing() {
     }
     
     try {
+      console.log("Attempting to create account for:", signUpData.email);
       const result = await signUpWithEmail(
         signUpData.email, 
         signUpData.password, 
@@ -105,6 +106,7 @@ export default function Landing() {
         signUpData.lastName
       );
       
+      console.log("Sign up result:", result);
       if (result.emailSent) {
         setSuccess("Account created! Please check your email to verify your account before signing in.");
         setSignUpData({
@@ -116,7 +118,10 @@ export default function Landing() {
         });
       }
     } catch (error: any) {
-      console.error("Email sign up error:", error);
+      console.error("Email sign up error details:", error);
+      console.error("Error code:", error?.code);
+      console.error("Error message:", error?.message);
+      
       let errorMessage = "Failed to create account. Please try again.";
       
       if (error.code === "auth/email-already-in-use") {
@@ -125,6 +130,12 @@ export default function Landing() {
         errorMessage = "Invalid email address.";
       } else if (error.code === "auth/weak-password") {
         errorMessage = "Password is too weak. Please choose a stronger password.";
+      } else if (error.code === "auth/operation-not-allowed") {
+        errorMessage = "Email/password sign-up is not enabled. Please contact support.";
+      } else if (error.code === "auth/invalid-api-key") {
+        errorMessage = "Authentication service is not properly configured.";
+      } else if (error.message) {
+        errorMessage = `Error: ${error.message}`;
       }
       
       setError(errorMessage);
