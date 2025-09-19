@@ -16,19 +16,12 @@ export function useFirebaseAuth() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Handle redirect result first
-    handleRedirectResult()
-      .then((result) => {
-        if (result?.user) {
-          console.log('Google sign-in successful:', result.user);
-        }
-      })
-      .catch((error) => {
-        console.error('Google sign-in error:', error);
-      });
+    let mounted = true;
 
-    // Set up auth state listener
+    // Set up auth state listener first
     const unsubscribe = onAuthStateChange((firebaseUser: User | null) => {
+      if (!mounted) return;
+      
       if (firebaseUser) {
         // Convert Firebase user to our app user format
         const appUser: FirebaseUser = {
@@ -45,7 +38,23 @@ export function useFirebaseAuth() {
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    // Handle redirect result (for OAuth returns)
+    handleRedirectResult()
+      .then((result) => {
+        if (!mounted) return;
+        // Auth state listener will handle setting the user
+      })
+      .catch((error) => {
+        console.error('Authentication error:', error);
+        if (mounted) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      mounted = false;
+      unsubscribe();
+    };
   }, []);
 
   return { user, loading };
