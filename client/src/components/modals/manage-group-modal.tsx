@@ -56,6 +56,9 @@ export default function ManageGroupModal({ open, onOpenChange, group }: ManageGr
   const [allowMembersToInvite, setAllowMembersToInvite] = useState(false);
   const [maxMembers, setMaxMembers] = useState("50");
   const [groupRules, setGroupRules] = useState("");
+  const [audience, setAudience] = useState("coed");
+  const [purpose, setPurpose] = useState("prayer");
+  const [purposeTagline, setPurposeTagline] = useState("");
   const [showMeetingModal, setShowMeetingModal] = useState(false);
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
@@ -79,6 +82,9 @@ export default function ManageGroupModal({ open, onOpenChange, group }: ManageGr
       setAllowMembersToInvite(group.allowMembersToInvite ?? false);
       setMaxMembers(group.maxMembers || "50");
       setGroupRules(group.groupRules || "");
+      setAudience(group.audience || "coed");
+      setPurpose(group.purpose || "prayer");
+      setPurposeTagline(group.purposeTagline || "");
     }
   }, [group, open]);
 
@@ -266,6 +272,9 @@ export default function ManageGroupModal({ open, onOpenChange, group }: ManageGr
       allowMembersToInvite,
       maxMembers,
       groupRules: groupRules.trim() || null,
+      audience,
+      purpose,
+      purposeTagline: purposeTagline.trim() || null,
     };
 
     updateGroupMutation.mutate(groupData);
@@ -402,45 +411,109 @@ export default function ManageGroupModal({ open, onOpenChange, group }: ManageGr
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label htmlFor="edit-meetingDay">Meeting Day</Label>
-                <Select value={meetingDay} onValueChange={setMeetingDay}>
-                  <SelectTrigger data-testid="select-edit-meeting-day">
-                    <SelectValue placeholder="Select day" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {weekDays.map((day) => (
-                      <SelectItem key={day.value} value={day.value}>
-                        {day.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            {/* Group Characteristics */}
+            <div className="space-y-3 border-t pt-4">
+              <h4 className="font-medium text-foreground">Group Characteristics</h4>
               
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="edit-audience">Who Can Join</Label>
+                  <Select value={audience} onValueChange={setAudience}>
+                    <SelectTrigger data-testid="select-edit-audience">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="coed">Everyone (Co-ed)</SelectItem>
+                      <SelectItem value="men_only">Men Only</SelectItem>
+                      <SelectItem value="women_only">Women Only</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <Label htmlFor="edit-purpose">Group Purpose</Label>
+                  <Select value={purpose} onValueChange={setPurpose}>
+                    <SelectTrigger data-testid="select-edit-purpose">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="prayer">Prayer & Worship</SelectItem>
+                      <SelectItem value="bible_study">Bible Study</SelectItem>
+                      <SelectItem value="fellowship">Fellowship</SelectItem>
+                      <SelectItem value="youth">Youth Ministry</SelectItem>
+                      <SelectItem value="marriage_couples">Marriage & Couples</SelectItem>
+                      <SelectItem value="recovery_healing">Recovery & Healing</SelectItem>
+                      <SelectItem value="outreach_service">Outreach & Service</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
               <div>
-                <Label htmlFor="edit-meetingTime">Meeting Time</Label>
+                <Label htmlFor="edit-purposeTagline">Purpose Tagline (Optional)</Label>
                 <Input
-                  id="edit-meetingTime"
-                  type="time"
-                  value={meetingTime}
-                  onChange={(e) => setMeetingTime(e.target.value)}
-                  data-testid="input-edit-meeting-time"
+                  id="edit-purposeTagline"
+                  type="text"
+                  value={purposeTagline}
+                  onChange={(e) => setPurposeTagline(e.target.value)}
+                  placeholder="Short description of your group's focus"
+                  data-testid="input-edit-purpose-tagline"
                 />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Brief description shown to people considering joining
+                </p>
               </div>
             </div>
 
-            <div>
-              <Label htmlFor="edit-meetingLocation">Meeting Location</Label>
-              <Input
-                id="edit-meetingLocation"
-                type="text"
-                value={meetingLocation}
-                onChange={(e) => setMeetingLocation(e.target.value)}
-                placeholder="Church, home address, or meeting place"
-                data-testid="input-edit-meeting-location"
-              />
+            {/* Default Meeting Schedule */}
+            <div className="space-y-3 border-t pt-4">
+              <h4 className="font-medium text-foreground">Default Meeting Schedule</h4>
+              <p className="text-sm text-muted-foreground">
+                This information helps people find your group and is used to prefill new meetings. 
+                Manage actual meetings in the "Meetings" tab.
+              </p>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="edit-meetingDay">Default Day</Label>
+                  <Select value={meetingDay} onValueChange={setMeetingDay}>
+                    <SelectTrigger data-testid="select-edit-meeting-day">
+                      <SelectValue placeholder="Select day" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {weekDays.map((day) => (
+                        <SelectItem key={day.value} value={day.value}>
+                          {day.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <Label htmlFor="edit-meetingTime">Default Time</Label>
+                  <Input
+                    id="edit-meetingTime"
+                    type="time"
+                    value={meetingTime}
+                    onChange={(e) => setMeetingTime(e.target.value)}
+                    data-testid="input-edit-meeting-time"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="edit-meetingLocation">Default Location</Label>
+                <Input
+                  id="edit-meetingLocation"
+                  type="text"
+                  value={meetingLocation}
+                  onChange={(e) => setMeetingLocation(e.target.value)}
+                  placeholder="Church, home address, or meeting place"
+                  data-testid="input-edit-meeting-location"
+                />
+              </div>
             </div>
 
             {/* Moderation Settings */}

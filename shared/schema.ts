@@ -46,19 +46,42 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Group audience (who can join) - moved up for proper initialization
+export const groupAudienceEnum = pgEnum("group_audience", [
+  "men_only",
+  "women_only", 
+  "coed"
+]);
+
+// Group purpose categories - moved up for proper initialization  
+export const groupPurposeEnum = pgEnum("group_purpose", [
+  "prayer",
+  "bible_study",
+  "fellowship",
+  "youth",
+  "marriage_couples",
+  "recovery_healing",
+  "outreach_service",
+  "other"
+]);
+
 // Prayer groups
 export const groups = pgTable("groups", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: varchar("name").notNull(),
   description: text("description"),
   adminId: varchar("admin_id").references(() => users.id).notNull(),
-  meetingDay: varchar("meeting_day"), // e.g., "Friday"
-  meetingTime: varchar("meeting_time"), // e.g., "17:45"
-  meetingLocation: varchar("meeting_location"),
+  meetingDay: varchar("meeting_day"), // e.g., "Friday" - default schedule for discovery
+  meetingTime: varchar("meeting_time"), // e.g., "17:45" - default schedule for discovery
+  meetingLocation: varchar("meeting_location"), // Default meeting location
   isRecurringMeeting: boolean("is_recurring_meeting").default(true), // true for ongoing groups, false for one-time events
   latitude: decimal("latitude", { precision: 10, scale: 8 }),
   longitude: decimal("longitude", { precision: 11, scale: 8 }),
   isPublic: boolean("is_public").default(true),
+  // Group characteristics for discovery
+  audience: groupAudienceEnum("audience").default("coed"), // Who can join this group
+  purpose: groupPurposeEnum("purpose").default("prayer"), // Main purpose of the group
+  purposeTagline: text("purpose_tagline"), // Optional short description of group's focus
   // Moderation settings
   requireApprovalToJoin: boolean("require_approval_to_join").default(true),
   requireApprovalToPost: boolean("require_approval_to_post").default(false),

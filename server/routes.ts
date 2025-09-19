@@ -213,7 +213,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only group admin can update group settings" });
       }
       
-      const groupData = insertGroupSchema.parse({
+      const groupData = insertGroupSchema.partial().parse({
         ...req.body,
         adminId: userId
       });
