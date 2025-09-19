@@ -1,7 +1,7 @@
 // Firebase authentication hook to replace the Replit auth hook
 import { useState, useEffect } from 'react';
 import { User } from 'firebase/auth';
-import { onAuthStateChange, auth } from '@/lib/firebase';
+import { onAuthStateChange, getGoogleRedirectResult, auth } from '@/lib/firebase';
 
 interface FirebaseUser {
   id: string;
@@ -18,6 +18,17 @@ export function useFirebaseAuth() {
 
   useEffect(() => {
     let mounted = true;
+
+    // Check for redirect result first (for Google sign-in)
+    getGoogleRedirectResult().then((result) => {
+      if (result && result.user) {
+        console.log('Google redirect sign-in successful:', result.user.email);
+      }
+    }).catch((error) => {
+      if (error.code !== 'auth/null-user') { // Ignore null-user error (no redirect)
+        console.error('Google redirect error:', error);
+      }
+    });
 
     // Set up auth state listener 
     const unsubscribe = onAuthStateChange(async (firebaseUser: User | null) => {

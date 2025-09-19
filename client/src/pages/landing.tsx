@@ -98,7 +98,6 @@ export default function Landing() {
     }
     
     try {
-      console.log("Attempting to create account for:", signUpData.email);
       const result = await signUpWithEmail(
         signUpData.email, 
         signUpData.password, 
@@ -106,7 +105,6 @@ export default function Landing() {
         signUpData.lastName
       );
       
-      console.log("Sign up result:", result);
       if (result.emailSent) {
         setSuccess("Account created! Please check your email to verify your account before signing in.");
         setSignUpData({
@@ -118,9 +116,7 @@ export default function Landing() {
         });
       }
     } catch (error: any) {
-      console.error("Email sign up error details:", error);
-      console.error("Error code:", error?.code);
-      console.error("Error message:", error?.message);
+      console.error("Email sign up error:", error);
       
       let errorMessage = "Failed to create account. Please try again.";
       
@@ -170,8 +166,8 @@ export default function Landing() {
   };
 
   return (
-    <div className="min-h-screen gradient-bg flex flex-col items-center justify-center text-center px-6">
-      <div className="glass-effect rounded-3xl p-8 max-w-md w-full">
+    <div className="min-h-screen gradient-bg flex flex-col items-center justify-center text-center px-6 pb-16">
+      <div className="glass-effect rounded-3xl p-8 max-w-md w-full mb-8">
         <div className="mb-8">
           <div className="w-24 h-24 mx-auto mb-6 rounded-lg overflow-hidden bg-black">
             <img 
@@ -503,7 +499,7 @@ export default function Landing() {
       </div>
       
       {/* Footer */}
-      <div className="absolute bottom-4 left-0 right-0 text-center">
+      <div className="text-center mt-8">
         <p className="text-xs text-white/60">Powered By Jesus</p>
       </div>
     </div>
