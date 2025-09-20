@@ -1,5 +1,6 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { APIProvider, Map, Marker, useMapsLibrary } from '@vis.gl/react-google-maps';
+import { MapPin, Search, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,13 +46,14 @@ function GeocodingComponent({ onLocationChange, initialLocation, required = fals
     [geocodingLib]
   );
 
-  const placesService = useMemo(() => {
+  const autocompleteService = useMemo(() => {
     if (placesLib) {
-      const div = document.createElement('div');
-      return new placesLib.PlacesService(div);
+      return new placesLib.AutocompleteService();
     }
     return null;
   }, [placesLib]);
+
+  const debounceRef = useRef<NodeJS.Timeout>();
 
   useEffect(() => {
     if (location.latitude && location.longitude && location.address) {
@@ -238,8 +240,8 @@ function GeocodingComponent({ onLocationChange, initialLocation, required = fals
   };
 
   const handleMapClick = async (event: any) => {
-    const lat = event.detail.latLng.lat;
-    const lng = event.detail.latLng.lng;
+    const lat = event.detail.latLng.lat();
+    const lng = event.detail.latLng.lng();
     
     if (geocoder) {
       try {
@@ -255,9 +257,26 @@ function GeocodingComponent({ onLocationChange, initialLocation, required = fals
             address: address,
           });
           setManualAddress(address);
+        } else {
+          // Fallback to coordinates if no address found
+          const address = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+          setLocation({
+            latitude: lat,
+            longitude: lng,
+            address: address,
+          });
+          setManualAddress(address);
         }
       } catch (error) {
         console.error('Reverse geocoding failed:', error);
+        // Fallback to coordinates
+        const address = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+        setLocation({
+          latitude: lat,
+          longitude: lng,
+          address: address,
+        });
+        setManualAddress(address);
       }
     }
   };
@@ -274,13 +293,13 @@ function GeocodingComponent({ onLocationChange, initialLocation, required = fals
           className="flex items-center space-x-2"
           data-testid="button-get-gps-location"
         >
-          <i className={`fas ${isGettingLocation ? 'fa-spinner fa-spin' : 'fa-location-crosshairs'}`}></i>
+          {isGettingLocation ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
           <span>{isGettingLocation ? 'Getting Location...' : 'Use My GPS Location'}</span>
         </Button>
         
         {location.latitude && location.longitude && (
           <div className="text-sm text-muted-foreground">
-            <i className="fas fa-check-circle text-green-500 mr-1"></i>
+            <CheckCircle className="w-4 h-4 text-green-500 mr-1" />
             Location set
           </div>
         )}
@@ -327,7 +346,7 @@ function GeocodingComponent({ onLocationChange, initialLocation, required = fals
             disabled={isGettingLocation || !manualAddress.trim()}
             data-testid="button-lookup-address"
           >
-            <i className="fas fa-search"></i>
+            <Search className="w-4 h-4" />
           </Button>
         </div>
       </div>

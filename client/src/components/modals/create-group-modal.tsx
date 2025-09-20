@@ -84,7 +84,7 @@ export default function CreateGroupModal({ open, onOpenChange }: CreateGroupModa
       return;
     }
 
-    if (!groupLocation?.latitude || !groupLocation?.longitude) {
+    if (groupLocation?.latitude == null || groupLocation?.longitude == null) {
       toast({
         title: "Location Required",
         description: "Please set a location for your group so others can find you.",
@@ -99,8 +99,8 @@ export default function CreateGroupModal({ open, onOpenChange }: CreateGroupModa
       meetingDay: meetingDay || null,
       meetingTime: meetingTime || null,
       meetingLocation: meetingLocation.trim() || groupLocation?.address || null,
-      latitude: groupLocation?.latitude?.toString() || null,
-      longitude: groupLocation?.longitude?.toString() || null,
+      latitude: groupLocation?.latitude || null,
+      longitude: groupLocation?.longitude || null,
       isPublic,
       requireApprovalToJoin,
       requireApprovalToPost,
