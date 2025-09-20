@@ -346,7 +346,11 @@ export default function GroupsMap({ onGroupSelect, selectedGroupId }: GroupsMapP
           className="flex items-center space-x-2"
           data-testid="button-center-on-me"
         >
-          <i className={`fas ${isGettingLocation ? 'fa-spinner fa-spin' : 'fa-location-crosshairs'}`}></i>
+          {isGettingLocation ? (
+            <i className="fas fa-spinner fa-spin"></i>
+          ) : (
+            <i className="fas fa-location-crosshairs"></i>
+          )}
           <span>{isGettingLocation ? 'Finding...' : 'Center on Me'}</span>
         </Button>
       </div>
