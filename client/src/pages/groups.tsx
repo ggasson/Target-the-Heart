@@ -233,14 +233,14 @@ export default function Groups() {
       </div>
 
       {/* Filter Options */}
-      <div className="flex space-x-3 mb-6 overflow-x-auto">
+      <div className="flex space-x-1 mb-6">
         {filters.map((filter) => (
           <Button
             key={filter.id}
             variant={selectedFilter === filter.id ? "default" : "secondary"}
             size="sm"
             onClick={() => setSelectedFilter(filter.id)}
-            className="whitespace-nowrap"
+            className="whitespace-nowrap text-xs px-2 py-1 h-7"
             data-testid={`button-filter-${filter.id}`}
           >
             {filter.label}
