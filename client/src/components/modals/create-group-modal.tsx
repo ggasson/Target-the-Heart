@@ -21,7 +21,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import LocationPicker from "@/components/location-picker";
+import LocationPickerGoogle from "@/components/location-picker-google";
 
 interface CreateGroupModalProps {
   open: boolean;
@@ -79,6 +79,15 @@ export default function CreateGroupModal({ open, onOpenChange }: CreateGroupModa
       toast({
         title: "Missing information",
         description: "Please fill in the group name and description.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!groupLocation?.latitude || !groupLocation?.longitude) {
+      toast({
+        title: "Location Required",
+        description: "Please set a location for your group so others can find you.",
         variant: "destructive",
       });
       return;
@@ -220,9 +229,10 @@ export default function CreateGroupModal({ open, onOpenChange }: CreateGroupModa
           </div>
 
           {/* Location */}
-          <LocationPicker
+          <LocationPickerGoogle
             onLocationChange={setGroupLocation}
             label="Group Location (helps others find you)"
+            required={true}
           />
           
           <div>
