@@ -17,7 +17,7 @@ export default function Chat() {
 
   const { data: myGroups = [] } = useQuery({
     queryKey: ["/api/groups/my"],
-  });
+  }) as { data: any[] };
 
   // Select first group by default
   useEffect(() => {
@@ -29,7 +29,7 @@ export default function Chat() {
   const { data: messages = [] } = useQuery({
     queryKey: ["/api/groups", selectedGroupId, "messages"],
     enabled: !!selectedGroupId,
-  });
+  }) as { data: any[] };
 
   const sendMessageMutation = useMutation({
     mutationFn: async (content: string) => {

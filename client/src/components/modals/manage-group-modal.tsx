@@ -882,7 +882,7 @@ export default function ManageGroupModal({ open, onOpenChange, group }: ManageGr
                 Quick Schedule
               </Button>
               <Button
-                onClick={handleCreateMeeting}
+                onClick={() => handleCreateMeeting()}
                 size="sm"
                 variant="outline"
                 className="flex-1 sm:flex-none"
@@ -919,7 +919,7 @@ export default function ManageGroupModal({ open, onOpenChange, group }: ManageGr
                       Quick Schedule
                     </Button>
                     <Button
-                      onClick={handleCreateMeeting}
+                      onClick={() => handleCreateMeeting()}
                       variant="outline"
                       data-testid="button-create-first-meeting"
                     >

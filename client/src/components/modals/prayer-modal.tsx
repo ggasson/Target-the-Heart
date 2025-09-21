@@ -36,7 +36,7 @@ export default function PrayerModal({ open, onOpenChange }: PrayerModalProps) {
 
   const { data: myGroups = [] } = useQuery({
     queryKey: ["/api/groups/my"],
-  });
+  }) as { data: any[] };
 
   const createPrayerMutation = useMutation({
     mutationFn: async (prayerData: any) => {
