@@ -67,8 +67,9 @@ async function initializeApp() {
       const { setupVite } = await import("./vite");
       await setupVite(app, server);
     } else {
-      const { serveStatic } = await import("./vite");
-      serveStatic(app);
+      // Use stub in production to avoid Vite dependencies
+      const { setupVite } = await import("./vite-stub");
+      await setupVite(app, server);
     }
 
     appInitialized = true;
