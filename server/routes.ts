@@ -16,7 +16,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Verse reference required" });
       }
 
-      // Try ESV API first if API key is available
+      // Try KJV translation first via bible-api.com
+      try {
+        const response = await fetch(`https://bible-api.com/${verseRef}?translation=kjv`);
+        if (response.ok) {
+          const data = await response.json();
+          return res.json({
+            reference: data.reference,
+            text: data.text.replace(/\s+/g, ' ').trim(),
+            translation_id: data.translation_id || 'kjv',
+            translation_name: data.translation_name || 'King James Version'
+          });
+        }
+      } catch (kjvError) {
+        console.error("KJV Bible API error:", kjvError);
+      }
+
+      // Fallback to ESV API if KJV fails and API key is available
       const esvApiKey = process.env.ESV_API_KEY;
       
       if (esvApiKey) {
@@ -43,28 +59,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Fallback to bible-api.com if ESV API fails or no key
-      try {
-        const response = await fetch(`https://bible-api.com/${verseRef}?translation=kjv`);
-        if (response.ok) {
-          const data = await response.json();
-          return res.json({
-            reference: data.reference,
-            text: data.text.replace(/\s+/g, ' ').trim(),
-            translation_id: data.translation_id || 'kjv',
-            translation_name: data.translation_name || 'King James Version'
-          });
-        }
-      } catch (fallbackError) {
-        console.error("Bible API fallback error:", fallbackError);
-      }
-      
-      // Final fallback verse if all APIs fail
+      // Final fallback verse if all APIs fail (using KJV text)
       res.json({
         reference: "John 3:16",
-        text: "For God so loved the world, that he gave his only Son, that whoever believes in him should not perish but have eternal life.",
-        translation_id: "esv",
-        translation_name: "English Standard Version"
+        text: "For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life.",
+        translation_id: "kjv",
+        translation_name: "King James Version"
       });
     } catch (error) {
       console.error("Error fetching daily verse:", error);
