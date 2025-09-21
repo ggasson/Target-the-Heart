@@ -14,14 +14,8 @@ export default async function handler(req, res) {
       return;
     }
     
-    // Import the initialized Express app - try both possible paths
-    let app, initializeApp;
-    try {
-      ({ app, initializeApp } = await import('../dist/server/index.js'));
-    } catch (error) {
-      console.log('Failed to import from dist/server/index.js, trying dist/index.js:', error.message);
-      ({ app, initializeApp } = await import('../dist/index.js'));
-    }
+    // Import the initialized Express app from esbuild output
+    const { app, initializeApp } = await import('../dist/index.js');
     
     // Initialize the app if not already done
     await initializeApp();
