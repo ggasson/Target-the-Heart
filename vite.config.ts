@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import path from "path";
 
 export default defineConfig({
+  base: "/",
   plugins: [
     react(),
     // Removed Replit-specific plugins for local development
