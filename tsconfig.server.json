@@ -19,6 +19,7 @@
   "exclude": [
     "client/**/*",
     "vite.config.ts",
+    "server/replitAuth.ts",
     "**/*.test.ts",
     "**/*.spec.ts",
     "node_modules"

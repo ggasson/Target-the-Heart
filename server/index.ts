@@ -67,7 +67,7 @@ async function initializeApp() {
       try {
         const { setupVite } = await import("./vite");
         await setupVite(app, server);
-      } catch (error) {
+      } catch (error: any) {
         console.log("Vite setup failed, continuing without it:", error.message);
       }
     }
