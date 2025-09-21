@@ -90,6 +90,3 @@ if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
     });
   })();
 }
-
-// Export the app for serverless functions
-export { app };
