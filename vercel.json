@@ -1,19 +1,16 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/node"
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist/public",
+  "functions": {
+    "dist/index.js": {
+      "runtime": "nodejs18.x"
     }
-  ],
-  "routes": [
+  },
+  "rewrites": [
     {
-      "src": "/api/(.*)",
-      "dest": "/dist/index.js"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/dist/public/$1"
+      "source": "/api/(.*)",
+      "destination": "/dist/index.js"
     }
   ]
 }
