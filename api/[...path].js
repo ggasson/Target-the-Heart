@@ -15,7 +15,7 @@ export default async function handler(req, res) {
     }
     
     // Import the initialized Express app
-    const { app, initializeApp } = await import('../dist/index.js');
+    const { app, initializeApp } = await import('../dist/server/index.js');
     
     // Initialize the app if not already done
     await initializeApp();
