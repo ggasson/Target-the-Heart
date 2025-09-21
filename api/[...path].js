@@ -14,7 +14,7 @@ export default async function handler(req, res) {
       return;
     }
     
-    // Import the initialized Express app
+    // Import the initialized Express app (fixed path for TypeScript build)
     const { app, initializeApp } = await import('../dist/server/index.js');
     
     // Initialize the app if not already done
