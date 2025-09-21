@@ -7,6 +7,11 @@ const log = (message: string) => {
   console.log(`[${new Date().toISOString()}] ${message}`);
 };
 
+// Debug environment on startup
+log(`🚀 Server starting with NODE_ENV: ${process.env.NODE_ENV}`);
+log(`🔍 DATABASE_URL: ${process.env.DATABASE_URL ? 'SET' : 'MISSING'}`);
+log(`🔍 FIREBASE_PROJECT_ID: ${process.env.FIREBASE_PROJECT_ID ? 'SET' : 'MISSING'}`);
+
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
