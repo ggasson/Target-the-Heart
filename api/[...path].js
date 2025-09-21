@@ -14,12 +14,11 @@ export default async function handler(req, res) {
       return;
     }
     
-    // Import the Express app
-    const { app } = await import('../dist/index.js');
+    // Import the initialized Express app
+    const { app, initializeApp } = await import('../dist/index.js');
     
-    if (!app) {
-      throw new Error('Express app not found');
-    }
+    // Initialize the app if not already done
+    await initializeApp();
     
     // Handle the request with the Express app
     app(req, res);
