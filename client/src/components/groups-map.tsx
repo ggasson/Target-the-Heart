@@ -1,20 +1,12 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { APIProvider, Map, Marker, InfoWindow } from '@vis.gl/react-google-maps';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import type { Group } from "@shared/schema";
-import L from "leaflet";
-
-// Fix for default markers in Leaflet
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-});
 
 interface GroupsMapProps {
   onGroupSelect?: (group: Group) => void;
@@ -26,17 +18,14 @@ interface UserLocation {
   longitude: number;
 }
 
-export default function GroupsMap({ onGroupSelect, selectedGroupId }: GroupsMapProps) {
+function GroupsMapContent({ onGroupSelect, selectedGroupId }: GroupsMapProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
-  const [mapViewCenter, setMapViewCenter] = useState({ lat: 39.8283, lng: -98.5795 }); // Center of US
-  const [zoomLevel, setZoomLevel] = useState(4);
-  const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<L.Map | null>(null);
-  const markersRef = useRef<{ [key: string]: L.Marker }>({});
-  const userMarkerRef = useRef<L.Marker | null>(null);
+  const [mapCenter, setMapCenter] = useState({ lat: 39.8283, lng: -98.5795 }); // Center of US
+  const [mapZoom, setMapZoom] = useState(4);
+  const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
 
   // Fetch all public groups with location data
   const { data: groups = [] } = useQuery<Group[]>({
@@ -49,36 +38,6 @@ export default function GroupsMap({ onGroupSelect, selectedGroupId }: GroupsMapP
     Number(group.latitude) !== 0 && Number(group.longitude) !== 0
   );
 
-  // Initialize the map
-  useEffect(() => {
-    if (mapRef.current && !mapInstanceRef.current) {
-      mapInstanceRef.current = L.map(mapRef.current).setView(
-        [mapViewCenter.lat, mapViewCenter.lng],
-        zoomLevel
-      );
-
-      // Add OpenStreetMap tiles
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        maxZoom: 19,
-      }).addTo(mapInstanceRef.current);
-    }
-
-    return () => {
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
-        mapInstanceRef.current = null;
-      }
-    };
-  }, []);
-
-  // Update map view when center or zoom changes
-  useEffect(() => {
-    if (mapInstanceRef.current) {
-      mapInstanceRef.current.setView([mapViewCenter.lat, mapViewCenter.lng], zoomLevel);
-    }
-  }, [mapViewCenter, zoomLevel]);
-
   // Load user location from profile
   useEffect(() => {
     if ((user as any)?.latitude && (user as any)?.longitude) {
@@ -87,118 +46,13 @@ export default function GroupsMap({ onGroupSelect, selectedGroupId }: GroupsMapP
         longitude: Number((user as any).longitude),
       };
       setUserLocation(location);
-      setMapViewCenter({
+      setMapCenter({
         lat: location.latitude,
         lng: location.longitude,
       });
-      setZoomLevel(10);
+      setMapZoom(10);
     }
   }, [user]);
-
-  // Update user marker when location changes
-  useEffect(() => {
-    if (mapInstanceRef.current && userLocation) {
-      // Remove existing user marker
-      if (userMarkerRef.current) {
-        mapInstanceRef.current.removeLayer(userMarkerRef.current);
-      }
-
-      // Create blue user location icon
-      const userIcon = L.divIcon({
-        className: 'custom-user-marker',
-        html: '<div style="width: 20px; height: 20px; background: #3b82f6; border: 3px solid white; border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,0.3);"></div>',
-        iconSize: [20, 20],
-        iconAnchor: [10, 10],
-      });
-
-      // Add user marker
-      userMarkerRef.current = L.marker([userLocation.latitude, userLocation.longitude], {
-        icon: userIcon,
-      })
-        .addTo(mapInstanceRef.current)
-        .bindPopup('Your Location');
-    }
-  }, [userLocation]);
-
-  // Update group markers when groups data changes
-  useEffect(() => {
-    if (mapInstanceRef.current && groupsWithLocation.length > 0) {
-      // Clear existing markers
-      Object.values(markersRef.current).forEach(marker => {
-        mapInstanceRef.current!.removeLayer(marker);
-      });
-      markersRef.current = {};
-
-      // Add markers for each group
-      groupsWithLocation.forEach(group => {
-        if (group.latitude && group.longitude) {
-          // Create custom icon for prayer groups
-          const groupIcon = L.divIcon({
-            className: 'custom-group-marker',
-            html: `<div style="width: 24px; height: 24px; background: hsl(var(--primary)); border: 2px solid white; border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; color: white; font-size: 12px;">⛪</div>`,
-            iconSize: [24, 24],
-            iconAnchor: [12, 12],
-          });
-
-          // Create popup content safely using DOM elements
-          const popupContainer = document.createElement('div');
-          popupContainer.style.minWidth = '200px';
-          
-          const title = document.createElement('h3');
-          title.style.cssText = 'margin: 0 0 8px 0; font-weight: bold;';
-          title.textContent = group.name;
-          popupContainer.appendChild(title);
-          
-          if (group.description) {
-            const description = document.createElement('p');
-            description.style.cssText = 'margin: 0 0 8px 0; font-size: 14px; color: #666;';
-            description.textContent = group.description;
-            popupContainer.appendChild(description);
-          }
-          
-          if (group.meetingDay && group.meetingTime) {
-            const meetingTime = document.createElement('p');
-            meetingTime.style.cssText = 'margin: 0 0 4px 0; font-size: 12px;';
-            const meetingBold = document.createElement('strong');
-            meetingBold.textContent = `📅 ${group.meetingDay} ${group.meetingTime}`;
-            meetingTime.appendChild(meetingBold);
-            popupContainer.appendChild(meetingTime);
-          }
-          
-          if (group.meetingLocation) {
-            const location = document.createElement('p');
-            location.style.cssText = 'margin: 0; font-size: 12px;';
-            const locationBold = document.createElement('strong');
-            locationBold.textContent = `📍 ${group.meetingLocation}`;
-            location.appendChild(locationBold);
-            popupContainer.appendChild(location);
-          }
-
-          const marker = L.marker([Number(group.latitude), Number(group.longitude)], {
-            icon: groupIcon,
-          })
-            .addTo(mapInstanceRef.current!)
-            .bindPopup(popupContainer);
-
-          // Add click event to select group
-          marker.on('click', () => {
-            onGroupSelect?.(group);
-          });
-
-          markersRef.current[group.id] = marker;
-        }
-      });
-    }
-  }, [groupsWithLocation, onGroupSelect]);
-
-  // Highlight selected group
-  useEffect(() => {
-    Object.entries(markersRef.current).forEach(([groupId, marker]) => {
-      if (groupId === selectedGroupId) {
-        marker.openPopup();
-      }
-    });
-  }, [selectedGroupId]);
 
   const getCurrentLocation = () => {
     setIsGettingLocation(true);
@@ -243,11 +97,11 @@ export default function GroupsMap({ onGroupSelect, selectedGroupId }: GroupsMapP
         };
         
         setUserLocation(location);
-        setMapViewCenter({
+        setMapCenter({
           lat: location.latitude,
           lng: location.longitude,
         });
-        setZoomLevel(12);
+        setMapZoom(12);
         
         toast({
           title: "Location Found",
@@ -316,22 +170,26 @@ export default function GroupsMap({ onGroupSelect, selectedGroupId }: GroupsMapP
       })).sort((a, b) => a.distance - b.distance)
     : groupsWithLocation;
 
-  const centerOnGroup = (group: Group) => {
+  const centerOnGroup = useCallback((group: Group) => {
     if (group.latitude && group.longitude) {
-      setMapViewCenter({
+      setMapCenter({
         lat: Number(group.latitude),
         lng: Number(group.longitude),
       });
-      setZoomLevel(14);
+      setMapZoom(14);
       onGroupSelect?.(group);
-      
-      // Open the popup for this group
-      const marker = markersRef.current[group.id];
-      if (marker) {
-        marker.openPopup();
-      }
+      setSelectedGroup(group);
     }
-  };
+  }, [onGroupSelect]);
+
+  const handleMarkerClick = useCallback((group: Group) => {
+    setSelectedGroup(group);
+    onGroupSelect?.(group);
+  }, [onGroupSelect]);
+
+  const handleInfoWindowClose = useCallback(() => {
+    setSelectedGroup(null);
+  }, []);
 
   return (
     <div className="space-y-4">
@@ -355,14 +213,86 @@ export default function GroupsMap({ onGroupSelect, selectedGroupId }: GroupsMapP
         </Button>
       </div>
 
-      {/* Interactive OpenStreetMap */}
+      {/* Google Map */}
       <Card className="relative">
         <CardContent className="p-0">
-          <div 
-            ref={mapRef}
-            className="h-96 rounded-lg overflow-hidden"
-            data-testid="groups-map-container"
-          />
+          <div className="h-96 rounded-lg overflow-hidden" data-testid="groups-map-container">
+            <Map
+              center={mapCenter}
+              zoom={mapZoom}
+              style={{ width: '100%', height: '100%' }}
+              gestureHandling="greedy"
+              disableDefaultUI={false}
+              clickableIcons={false}
+            >
+              {/* User Location Marker */}
+              {userLocation && (
+                <Marker
+                  position={{ lat: userLocation.latitude, lng: userLocation.longitude }}
+                  icon={{
+                    path: google.maps.SymbolPath.CIRCLE,
+                    fillColor: '#3b82f6',
+                    fillOpacity: 1,
+                    strokeColor: '#ffffff',
+                    strokeWeight: 3,
+                    scale: 10,
+                  }}
+                  title="Your Location"
+                />
+              )}
+
+              {/* Group Markers */}
+              {groupsWithLocation.map((group) => (
+                <Marker
+                  key={group.id}
+                  position={{ lat: Number(group.latitude), lng: Number(group.longitude) }}
+                  icon={{
+                    path: google.maps.SymbolPath.CIRCLE,
+                    fillColor: 'hsl(var(--primary))',
+                    fillOpacity: 1,
+                    strokeColor: '#ffffff',
+                    strokeWeight: 2,
+                    scale: 12,
+                  }}
+                  title={group.name}
+                  onClick={() => handleMarkerClick(group)}
+                />
+              ))}
+
+              {/* Info Window for Selected Group */}
+              {selectedGroup && (
+                <InfoWindow
+                  position={{ lat: Number(selectedGroup.latitude), lng: Number(selectedGroup.longitude) }}
+                  onCloseClick={handleInfoWindowClose}
+                >
+                  <div className="p-2 max-w-xs">
+                    <h4 className="font-medium text-foreground mb-1">{selectedGroup.name}</h4>
+                    {selectedGroup.description && (
+                      <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
+                        {selectedGroup.description}
+                      </p>
+                    )}
+                    
+                    <div className="space-y-1 text-xs text-muted-foreground">
+                      {selectedGroup.meetingDay && selectedGroup.meetingTime && (
+                        <div className="flex items-center">
+                          <i className="fas fa-calendar mr-1"></i>
+                          {selectedGroup.meetingDay} {selectedGroup.meetingTime}
+                        </div>
+                      )}
+                      
+                      {selectedGroup.meetingLocation && (
+                        <div className="flex items-center">
+                          <i className="fas fa-map-marker-alt mr-1"></i>
+                          {selectedGroup.meetingLocation}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </InfoWindow>
+              )}
+            </Map>
+          </div>
         </CardContent>
       </Card>
 
@@ -449,5 +379,30 @@ export default function GroupsMap({ onGroupSelect, selectedGroupId }: GroupsMapP
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function GroupsMap({ onGroupSelect, selectedGroupId }: GroupsMapProps) {
+  // Get Google Maps API key from environment
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+
+  if (!apiKey) {
+    return (
+      <Card>
+        <CardContent className="p-6 text-center">
+          <i className="fas fa-exclamation-triangle text-4xl text-muted-foreground mb-4"></i>
+          <p className="text-muted-foreground">Google Maps API key not configured</p>
+          <p className="text-sm text-muted-foreground">
+            Please add VITE_GOOGLE_MAPS_API_KEY to your environment variables
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <APIProvider apiKey={apiKey}>
+      <GroupsMapContent onGroupSelect={onGroupSelect} selectedGroupId={selectedGroupId} />
+    </APIProvider>
   );
 }
