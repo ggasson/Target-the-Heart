@@ -64,13 +64,14 @@ async function initializeApp() {
     // setting up all the other routes so the catch-all route
     // doesn't interfere with the other routes
     if (process.env.NODE_ENV === "development") {
-      const { setupVite } = await import("./vite");
-      await setupVite(app, server);
-    } else {
-      // Use stub in production to avoid Vite dependencies
-      const { setupVite } = await import("./vite-stub");
-      await setupVite(app, server);
+      try {
+        const { setupVite } = await import("./vite");
+        await setupVite(app, server);
+      } catch (error) {
+        console.log("Vite setup failed, continuing without it:", error.message);
+      }
     }
+    // In production, Vercel handles static files, so no setup needed
 
     appInitialized = true;
     return server;
