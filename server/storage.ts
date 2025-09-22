@@ -625,10 +625,10 @@ export class DatabaseStorage implements IStorage {
       .onConflictDoUpdate({
         target: [meetingRsvps.meetingId, meetingRsvps.userId],
         set: {
-          status: rsvp.status,
-          notes: rsvp.notes,
-          guestCount: rsvp.guestCount,
-          updatedAt: new Date(),
+          status: sql`excluded.status`,
+          notes: sql`excluded.notes`,
+          guestCount: sql`excluded.guest_count`,
+          updatedAt: sql`now()`,
         },
       })
       .returning();
