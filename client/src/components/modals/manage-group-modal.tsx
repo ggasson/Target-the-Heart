@@ -374,20 +374,20 @@ export default function ManageGroupModal({ open, onOpenChange, group }: ManageGr
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="w-[95vw] max-w-lg max-h-[90vh] overflow-y-auto sm:w-full">
+      <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-y-auto sm:w-full">
         <DialogHeader>
           <DialogTitle>Manage {group.name}</DialogTitle>
         </DialogHeader>
         
         {/* Tab Navigation */}
-        <div className="flex space-x-1 mb-6 bg-muted rounded-lg p-1 overflow-x-auto">
+        <div className="flex space-x-1 mb-6 bg-muted rounded-lg p-1 overflow-x-auto scrollbar-hide">
           {tabs.map((tab) => (
             <Button
               key={tab.id}
               variant={activeTab === tab.id ? "default" : "ghost"}
               size="sm"
               onClick={() => setActiveTab(tab.id)}
-              className="flex-1 relative whitespace-nowrap min-w-0 text-xs sm:text-sm"
+              className="flex-shrink-0 px-2 sm:px-3 text-xs sm:text-sm font-medium whitespace-nowrap min-w-fit"
               data-testid={`tab-${tab.id}`}
             >
               <i className={`${tab.icon} mr-1 sm:mr-2 text-xs`}></i>
@@ -440,7 +440,7 @@ export default function ManageGroupModal({ open, onOpenChange, group }: ManageGr
             <div className="space-y-3 border-t pt-4">
               <h4 className="font-medium text-foreground">Group Characteristics</h4>
               
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <Label htmlFor="edit-audience">Who Can Join</Label>
                   <Select value={audience} onValueChange={setAudience}>
@@ -499,7 +499,7 @@ export default function ManageGroupModal({ open, onOpenChange, group }: ManageGr
                 Manage actual meetings in the "Meetings" tab.
               </p>
               
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <Label htmlFor="edit-meetingDay">Default Day</Label>
                   <Select value={meetingDay} onValueChange={setMeetingDay}>
