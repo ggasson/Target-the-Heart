@@ -740,22 +740,20 @@ export default function ManageGroupModal({ open, onOpenChange, group }: ManageGr
                               </p>
                             </AlertDialogDescription>
                           </AlertDialogHeader>
-                          <AlertDialogFooter className="flex-col space-y-2">
-                            <div className="flex space-x-2 w-full">
-                              <Button 
-                                onClick={() => setDeleteStep(1)}
-                                variant="outline"
-                                className="flex-1"
-                                data-testid="button-back-delete"
-                              >
-                                ← Back
-                              </Button>
-                              <AlertDialogCancel className="flex-1" data-testid="button-cancel-delete-step2">Cancel</AlertDialogCancel>
-                            </div>
+                          <AlertDialogFooter className="flex space-x-2">
+                            <Button 
+                              onClick={() => setDeleteStep(1)}
+                              variant="outline"
+                              className="flex-1"
+                              data-testid="button-back-delete"
+                            >
+                              ← Back
+                            </Button>
+                            <AlertDialogCancel className="flex-1" data-testid="button-cancel-delete-step2">Cancel</AlertDialogCancel>
                             <AlertDialogAction 
                               onClick={() => deleteGroupMutation.mutate()}
                               disabled={deleteConfirmationText !== group?.name || deleteGroupMutation.isPending}
-                              className="w-full bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
+                              className="flex-1 bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
                               data-testid="button-confirm-final-delete"
                             >
                               {deleteGroupMutation.isPending ? (
@@ -766,7 +764,7 @@ export default function ManageGroupModal({ open, onOpenChange, group }: ManageGr
                               ) : (
                                 <>
                                   <i className="fas fa-trash mr-2"></i>
-                                  PERMANENTLY DELETE GROUP
+                                  DELETE
                                 </>
                               )}
                             </AlertDialogAction>
