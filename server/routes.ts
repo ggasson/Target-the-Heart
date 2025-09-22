@@ -625,8 +625,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/meetings/:id', isAuthenticated, async (req: any, res) => {
     try {
-      await storage.deleteMeeting(req.params.id);
-      res.json({ message: "Meeting deleted" });
+      const userId = req.user.claims.sub;
+      const meetingId = req.params.id;
+      
+      // Get meeting details to check permissions
+      const meeting = await storage.getMeeting(meetingId);
+      if (!meeting) {
+        return res.status(404).json({ message: "Meeting not found" });
+      }
+      
+      // Check if user is the meeting creator or group admin
+      const group = await storage.getGroup(meeting.groupId);
+      if (!group) {
+        return res.status(404).json({ message: "Group not found" });
+      }
+      
+      const isCreator = meeting.createdBy === userId;
+      const isGroupAdmin = group.adminId === userId;
+      
+      if (!isCreator && !isGroupAdmin) {
+        return res.status(403).json({ message: "You don't have permission to delete this meeting" });
+      }
+      
+      await storage.deleteMeeting(meetingId);
+      res.json({ message: "Meeting deleted successfully" });
     } catch (error) {
       console.error("Error deleting meeting:", error);
       res.status(500).json({ message: "Failed to delete meeting" });

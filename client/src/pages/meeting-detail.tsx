@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useParams } from "wouter";
+import { useParams, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,9 +11,11 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 
 export default function MeetingDetailPage() {
   const { meetingId } = useParams();
+  const [, setLocation] = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
   const [rsvpNotes, setRsvpNotes] = useState("");
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Fetch meeting details
   const { data: meeting, isLoading } = useQuery<any>({
@@ -64,6 +66,41 @@ export default function MeetingDetailPage() {
     rsvpMutation.mutate({ status, notes: rsvpNotes });
   };
 
+  // Delete meeting mutation
+  const deleteMeetingMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest('DELETE', `/api/meetings/${meetingId}`);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Meeting Cancelled",
+        description: "The meeting has been cancelled successfully.",
+      });
+      // Navigate back to meetings page
+      setLocation('/meetings');
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error", 
+        description: error.message || "Failed to cancel meeting",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleDeleteMeeting = () => {
+    if (showDeleteConfirm) {
+      deleteMeetingMutation.mutate();
+      setShowDeleteConfirm(false);
+    } else {
+      setShowDeleteConfirm(true);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteConfirm(false);
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -99,6 +136,12 @@ export default function MeetingDetailPage() {
     notAttending: rsvps.filter(r => r.status === "not_attending").length,
     maybe: rsvps.filter(r => r.status === "maybe").length,
   };
+
+  // Check if user can delete meeting (created by them or they're group admin)
+  const canDeleteMeeting = user && meeting && (
+    meeting.createdBy === user.sub || 
+    meeting.group?.adminId === user.sub
+  );
 
   const getCurrentRsvpStatus = () => {
     if (!userRsvp) return null;
@@ -191,6 +234,49 @@ END:VCALENDAR`;
                   <i className="fas fa-calendar-plus mr-2"></i>
                   Add to Calendar
                 </Button>
+                {canDeleteMeeting && meeting.status === "scheduled" && (
+                  <>
+                    {!showDeleteConfirm ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleDeleteMeeting}
+                        className="text-red-600 border-red-300 hover:bg-red-50"
+                        data-testid="button-cancel-meeting"
+                      >
+                        <i className="fas fa-times mr-2"></i>
+                        Cancel Meeting
+                      </Button>
+                    ) : (
+                      <div className="flex items-center space-x-1">
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={handleDeleteMeeting}
+                          disabled={deleteMeetingMutation.isPending}
+                          data-testid="button-confirm-cancel"
+                        >
+                          {deleteMeetingMutation.isPending ? (
+                            <i className="fas fa-spinner fa-spin mr-2"></i>
+                          ) : (
+                            <i className="fas fa-check mr-2"></i>
+                          )}
+                          Confirm
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleCancelDelete}
+                          disabled={deleteMeetingMutation.isPending}
+                          data-testid="button-cancel-delete"
+                        >
+                          <i className="fas fa-times mr-2"></i>
+                          Cancel
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                )}
                 <Badge variant={meeting.status === "scheduled" ? "default" : "secondary"}>
                   {meeting.status}
                 </Badge>
