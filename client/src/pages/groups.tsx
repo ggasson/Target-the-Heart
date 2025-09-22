@@ -29,14 +29,16 @@ export default function Groups() {
   const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
 
   const { data: myGroups = [] } = useQuery<Group[]>({
     queryKey: ["/api/groups/my"],
+    enabled: isAuthenticated,
   });
 
   const { data: availableGroups = [] } = useQuery<Group[]>({
     queryKey: ["/api/groups"],
+    enabled: isAuthenticated,
   });
 
   const { data: myPendingRequests = [] } = useQuery({

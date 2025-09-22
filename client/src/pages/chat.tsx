@@ -13,10 +13,11 @@ export default function Chat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
 
   const { data: myGroups = [] } = useQuery({
     queryKey: ["/api/groups/my"],
+    enabled: isAuthenticated,
   }) as { data: any[] };
 
   // Select first group by default
@@ -28,7 +29,7 @@ export default function Chat() {
 
   const { data: messages = [] } = useQuery({
     queryKey: ["/api/groups", selectedGroupId, "messages"],
-    enabled: !!selectedGroupId,
+    enabled: !!selectedGroupId && isAuthenticated,
   }) as { data: any[] };
 
   const sendMessageMutation = useMutation({

@@ -20,8 +20,10 @@ import { ThemeSwitcher } from "@/components/theme-switcher";
 import NotFound from "@/pages/not-found";
 
 function NotificationButton() {
+  const { isAuthenticated } = useAuth();
   const { data: unreadNotifications = [] } = useQuery<any[]>({
     queryKey: ["/api/notifications/unread"],
+    enabled: isAuthenticated,
   });
 
   return (

@@ -138,27 +138,29 @@ function QuickRSVP({ meetingId, currentRsvp }: QuickRSVPProps) {
 }
 
 export default function Home({ onTabChange }: HomeProps) {
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const [showPrayerModal, setShowPrayerModal] = useState(false);
   
   const { data: myGroups = [] } = useQuery<Group[]>({
     queryKey: ["/api/groups/my"],
+    enabled: isAuthenticated,
   });
 
   const { data: recentPrayers = [] } = useQuery<(PrayerRequest & { group: Group; responses: any[] })[]>({
     queryKey: ["/api/prayers/my"],
+    enabled: isAuthenticated,
   });
 
   // Get next upcoming meeting with RSVP data
   const { data: nextMeeting } = useQuery<any>({
     queryKey: ["/api/meetings/next"],
-    enabled: !!user,
+    enabled: isAuthenticated,
   });
 
   // Get unread notifications count
   const { data: unreadNotifications = [] } = useQuery<any[]>({
     queryKey: ["/api/notifications/unread"],
-    enabled: !!user,
+    enabled: isAuthenticated,
   });
 
   return (
