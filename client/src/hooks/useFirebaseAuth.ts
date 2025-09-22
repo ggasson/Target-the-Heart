@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { User } from 'firebase/auth';
 import { onAuthStateChange, auth } from '@/lib/firebase';
+import { apiRequest } from '@/lib/queryClient';
 
 interface FirebaseUser {
   id: string;
@@ -9,6 +10,7 @@ interface FirebaseUser {
   firstName: string;
   lastName: string;
   avatar?: string;
+  birthday?: string;
 }
 
 export function useFirebaseAuth() {
@@ -35,16 +37,25 @@ export function useFirebaseAuth() {
           console.error('❌ Error getting ID token:', error);
         }
         
-        // Convert Firebase user to our app user format
-        const appUser: FirebaseUser = {
-          id: firebaseUser.uid,
-          email: firebaseUser.email || '',
-          firstName: firebaseUser.displayName?.split(' ')[0] || '',
-          lastName: firebaseUser.displayName?.split(' ').slice(1).join(' ') || '',
-          avatar: firebaseUser.photoURL || undefined,
-        };
-        setUser(appUser);
-        console.log('👤 User state set:', appUser.email);
+               // Fetch complete user data from our API
+               try {
+                 const response = await apiRequest('GET', '/api/auth/user');
+                 const userData = await response.json() as unknown as FirebaseUser;
+                 setUser(userData);
+                 console.log('👤 User state set from API:', userData.email);
+               } catch (error) {
+          console.error('❌ Error fetching user data:', error);
+          // Fallback to Firebase user data if API fails
+          const appUser: FirebaseUser = {
+            id: firebaseUser.uid,
+            email: firebaseUser.email || '',
+            firstName: firebaseUser.displayName?.split(' ')[0] || '',
+            lastName: firebaseUser.displayName?.split(' ').slice(1).join(' ') || '',
+            avatar: firebaseUser.photoURL || undefined,
+          };
+          setUser(appUser);
+          console.log('👤 User state set from Firebase fallback:', appUser.email);
+        }
       } else {
         setUser(null);
         setToken(null);
@@ -73,5 +84,19 @@ export function useFirebaseAuth() {
     return null;
   };
 
-  return { user, loading, token, getToken };
+         // Function to refresh user data from API
+         const refreshUserData = async () => {
+           if (auth.currentUser) {
+             try {
+               const response = await apiRequest('GET', '/api/auth/user');
+               const userData = await response.json() as unknown as FirebaseUser;
+               setUser(userData);
+               console.log('👤 User data refreshed:', userData.email);
+             } catch (error) {
+               console.error('❌ Error refreshing user data:', error);
+             }
+           }
+         };
+
+  return { user, loading, token, getToken, refreshUserData };
 }

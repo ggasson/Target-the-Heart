@@ -47,6 +47,73 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// User preferences table
+export const userPreferences = pgTable("user_preferences", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  
+  // Notification preferences
+  prayerNotifications: boolean("prayer_notifications").default(true),
+  meetingNotifications: boolean("meeting_notifications").default(true),
+  groupNotifications: boolean("group_notifications").default(true),
+  dailyVerseNotifications: boolean("daily_verse_notifications").default(true),
+  birthdayNotifications: boolean("birthday_notifications").default(true),
+  emailNotifications: boolean("email_notifications").default(true),
+  
+  // Privacy preferences
+  profileVisibility: varchar("profile_visibility").default("group_members"), // 'public', 'group_members', 'private'
+  showPrayerActivity: boolean("show_prayer_activity").default(true),
+  showMeetingAttendance: boolean("show_meeting_attendance").default(true),
+  allowGroupInvitations: boolean("allow_group_invitations").default(true),
+  
+  // Phase 2: Advanced notification settings
+  notificationFrequency: varchar("notification_frequency").default("real_time"), // 'real_time', 'daily_digest', 'weekly_summary'
+  quietHoursEnabled: boolean("quiet_hours_enabled").default(false),
+  quietHoursStart: varchar("quiet_hours_start").default("22:00"), // HH:MM format
+  quietHoursEnd: varchar("quiet_hours_end").default("08:00"), // HH:MM format
+  pushNotifications: boolean("push_notifications").default(true),
+  smsNotifications: boolean("sms_notifications").default(false),
+  
+  // Phase 2: Location privacy
+  locationSharingEnabled: boolean("location_sharing_enabled").default(true),
+  locationAccuracy: varchar("location_accuracy").default("approximate"), // 'exact', 'approximate', 'city_only'
+  proximityBasedGroups: boolean("proximity_based_groups").default(true),
+  
+  // Phase 2: Data management
+  dataRetentionDays: integer("data_retention_days").default(365), // How long to keep user data
+  autoArchivePrayers: boolean("auto_archive_prayers").default(false),
+  archiveAfterDays: integer("archive_after_days").default(30),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  unique().on(table.userId), // One preferences record per user
+]);
+
+// Group-specific notification preferences
+export const groupNotificationPreferences = pgTable("group_notification_preferences", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  groupId: varchar("group_id").references(() => groups.id).notNull(),
+  
+  // Group-specific notification toggles
+  prayerNotifications: boolean("prayer_notifications").default(true),
+  meetingNotifications: boolean("meeting_notifications").default(true),
+  groupActivityNotifications: boolean("group_activity_notifications").default(true),
+  chatNotifications: boolean("chat_notifications").default(true),
+  
+  // Notification frequency for this group
+  notificationFrequency: varchar("notification_frequency").default("real_time"), // 'real_time', 'daily_digest', 'weekly_summary'
+  
+  // Mute settings
+  mutedUntil: timestamp("muted_until"), // Temporarily mute notifications until this date
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  unique().on(table.userId, table.groupId), // One preference record per user per group
+]);
+
 // Group audience (who can join) - moved up for proper initialization
 export const groupAudienceEnum = pgEnum("group_audience", [
   "men_only",
@@ -148,6 +215,36 @@ export const prayerRequests = pgTable("prayer_requests", {
   authorId: varchar("author_id").references(() => users.id).notNull(),
   groupId: varchar("group_id").references(() => groups.id).notNull(),
   isUrgent: boolean("is_urgent").default(false),
+  
+  // Phase 3: Enhanced prayer request features
+  privacyLevel: varchar("privacy_level").default("group"), // 'public', 'group', 'private'
+  expiresAt: timestamp("expires_at"), // Optional expiration date
+  templateId: varchar("template_id"), // Will reference prayer templates table
+  tags: text("tags"), // JSON array of tags for better organization
+  priority: varchar("priority").default("normal"), // 'low', 'normal', 'high', 'urgent'
+  allowComments: boolean("allow_comments").default(true),
+  allowPrayerResponses: boolean("allow_prayer_responses").default(true),
+  reminderEnabled: boolean("reminder_enabled").default(false),
+  reminderFrequency: varchar("reminder_frequency").default("weekly"), // 'daily', 'weekly', 'monthly'
+  lastReminderSent: timestamp("last_reminder_sent"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Prayer templates for common prayer request types
+export const prayerTemplates = pgTable("prayer_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name").notNull(),
+  description: text("description"),
+  category: prayerCategoryEnum("category").notNull(),
+  template: text("template").notNull(), // The prayer request template text
+  isPublic: boolean("is_public").default(true), // Can be used by all groups
+  createdBy: varchar("created_by").references(() => users.id), // If null, it's a system template
+  groupId: varchar("group_id").references(() => groups.id), // If null, it's available to all groups
+  tags: text("tags"), // JSON array of tags
+  usageCount: integer("usage_count").default(0), // How many times this template has been used
+  isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -158,6 +255,18 @@ export const prayerResponses = pgTable("prayer_responses", {
   prayerRequestId: varchar("prayer_request_id").references(() => prayerRequests.id).notNull(),
   userId: varchar("user_id").references(() => users.id).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Prayer comments for enhanced interaction
+export const prayerComments = pgTable("prayer_comments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  prayerRequestId: varchar("prayer_request_id").references(() => prayerRequests.id).notNull(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  content: text("content").notNull(),
+  isPrivate: boolean("is_private").default(false), // Private comments only visible to prayer author
+  parentCommentId: varchar("parent_comment_id"), // For nested comments - will add reference later
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // Message status for moderation
@@ -179,6 +288,20 @@ export const rsvpStatusEnum = pgEnum("rsvp_status", [
   "attending",
   "not_attending", 
   "maybe"
+]);
+
+// Two-factor authentication settings
+export const twoFactorAuth = pgTable("two_factor_auth", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  secret: varchar("secret").notNull(), // TOTP secret key
+  backupCodes: text("backup_codes"), // JSON array of backup codes
+  isEnabled: boolean("is_enabled").default(false),
+  lastUsed: timestamp("last_used"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  unique().on(table.userId), // One 2FA record per user
 ]);
 
 // Chat messages
@@ -447,21 +570,61 @@ export const insertNotificationSchema = createInsertSchema(notifications).omit({
   createdAt: true,
 });
 
+export const insertUserPreferencesSchema = createInsertSchema(userPreferences).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertGroupNotificationPreferencesSchema = createInsertSchema(groupNotificationPreferences).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPrayerTemplateSchema = createInsertSchema(prayerTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPrayerCommentSchema = createInsertSchema(prayerComments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertTwoFactorAuthSchema = createInsertSchema(twoFactorAuth).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
+export type UserPreferences = typeof userPreferences.$inferSelect;
+export type GroupNotificationPreferences = typeof groupNotificationPreferences.$inferSelect;
 export type Group = typeof groups.$inferSelect;
 export type GroupMembership = typeof groupMemberships.$inferSelect;
 export type PrayerRequest = typeof prayerRequests.$inferSelect;
+export type PrayerTemplate = typeof prayerTemplates.$inferSelect;
+export type PrayerComment = typeof prayerComments.$inferSelect;
 export type PrayerResponse = typeof prayerResponses.$inferSelect;
+export type TwoFactorAuth = typeof twoFactorAuth.$inferSelect;
 export type ChatMessage = typeof chatMessages.$inferSelect;
 export type Meeting = typeof meetings.$inferSelect;
 export type MeetingRsvp = typeof meetingRsvps.$inferSelect;
 export type GroupInvitation = typeof groupInvitations.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
+export type InsertUserPreferences = z.infer<typeof insertUserPreferencesSchema>;
+export type InsertGroupNotificationPreferences = z.infer<typeof insertGroupNotificationPreferencesSchema>;
 export type InsertGroup = z.infer<typeof insertGroupSchema>;
 export type InsertPrayerRequest = z.infer<typeof insertPrayerRequestSchema>;
+export type InsertPrayerTemplate = z.infer<typeof insertPrayerTemplateSchema>;
+export type InsertPrayerComment = z.infer<typeof insertPrayerCommentSchema>;
+export type InsertTwoFactorAuth = z.infer<typeof insertTwoFactorAuthSchema>;
 export type InsertGroupMembership = z.infer<typeof insertGroupMembershipSchema>;
 export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
 export type InsertMeeting = z.infer<typeof insertMeetingSchema>;

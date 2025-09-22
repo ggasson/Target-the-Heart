@@ -3,7 +3,9 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { isAuthenticated } from "./firebaseAuth";
 import { sql } from "./db";
-import { insertGroupSchema, insertPrayerRequestSchema, insertGroupMembershipSchema, insertChatMessageSchema, insertMeetingSchema, insertMeetingRsvpSchema, insertGroupInvitationSchema } from "@shared/schema";
+import { insertGroupSchema, insertPrayerRequestSchema, insertGroupMembershipSchema, insertChatMessageSchema, insertMeetingSchema, insertMeetingRsvpSchema, insertGroupInvitationSchema, insertNotificationSchema, insertPrayerTemplateSchema, insertPrayerCommentSchema, insertTwoFactorAuthSchema, notifications } from "@shared/schema";
+import { eq, and, desc, inArray } from "drizzle-orm";
+import { db } from "./db";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -85,22 +87,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Update user birthday
+  // Update user profile
   app.patch('/api/users/me', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const { birthday } = req.body;
+      const { firstName, lastName, birthday } = req.body;
       
       // Validate birthday format if provided (YYYY-MM-DD)
       if (birthday && !/^\d{4}-\d{2}-\d{2}$/.test(birthday)) {
         return res.status(400).json({ message: "Birthday must be in YYYY-MM-DD format" });
       }
       
-      await storage.updateUserBirthday(userId, birthday || null);
-      res.json({ message: "Birthday updated successfully" });
+      // Update user profile fields
+      await storage.updateUserProfile(userId, {
+        firstName: firstName || null,
+        lastName: lastName || null,
+        birthday: birthday || null,
+      });
+      
+      res.json({ message: "Profile updated successfully" });
     } catch (error) {
-      console.error("Error updating birthday:", error);
-      res.status(500).json({ message: "Failed to update birthday" });
+      console.error("Error updating profile:", error);
+      res.status(500).json({ message: "Failed to update profile" });
     }
   });
 
@@ -927,6 +935,276 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deactivating invitation:", error);
       res.status(500).json({ message: "Failed to deactivate invitation" });
+    }
+  });
+
+  // User preferences routes
+  app.get('/api/user/preferences', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const preferences = await storage.getUserPreferences(userId);
+      
+      if (!preferences) {
+        // Return default preferences if none exist
+        res.json({
+          prayerNotifications: true,
+          meetingNotifications: true,
+          groupNotifications: true,
+          dailyVerseNotifications: true,
+          birthdayNotifications: true,
+          emailNotifications: true,
+          profileVisibility: 'group_members',
+          showPrayerActivity: true,
+          showMeetingAttendance: true,
+          allowGroupInvitations: true,
+        });
+      } else {
+        res.json(preferences);
+      }
+    } catch (error: any) {
+      console.error("Error fetching user preferences:", error);
+      res.status(500).json({ message: "Failed to fetch preferences" });
+    }
+  });
+
+  app.put('/api/user/preferences', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const preferences = await storage.createOrUpdateUserPreferences(userId, req.body);
+      res.json(preferences);
+    } catch (error: any) {
+      console.error("Error updating user preferences:", error);
+      res.status(500).json({ message: "Failed to update preferences" });
+    }
+  });
+
+  // Password change route (placeholder - Firebase handles this)
+  app.put('/api/user/password', isAuthenticated, async (req: any, res) => {
+    try {
+      // Note: Firebase handles password changes on the client side
+      // This endpoint is here for future implementation if needed
+      res.status(501).json({ 
+        message: "Password changes are handled by Firebase authentication. Please use the Firebase SDK on the client side." 
+      });
+    } catch (error: any) {
+      console.error("Error changing password:", error);
+      res.status(500).json({ message: "Failed to change password" });
+    }
+  });
+
+  // Phase 2: Group-specific notification preferences
+  app.get('/api/user/group-preferences', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const preferences = await storage.getAllGroupNotificationPreferences(userId);
+      res.json(preferences);
+    } catch (error: any) {
+      console.error("Error fetching group notification preferences:", error);
+      res.status(500).json({ message: "Failed to fetch group preferences" });
+    }
+  });
+
+  app.put('/api/user/group-preferences/:groupId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const groupId = req.params.groupId;
+      const preferences = await storage.createOrUpdateGroupNotificationPreferences(userId, groupId, req.body);
+      res.json(preferences);
+    } catch (error: any) {
+      console.error("Error updating group notification preferences:", error);
+      res.status(500).json({ message: "Failed to update group preferences" });
+    }
+  });
+
+  // Phase 2: Data export (GDPR compliance)
+  app.get('/api/user/export-data', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const userData = await storage.exportUserData(userId);
+      
+      // Set headers for file download
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename="target-the-heart-data-${userId}-${new Date().toISOString().split('T')[0]}.json"`);
+      res.json(userData);
+    } catch (error: any) {
+      console.error("Error exporting user data:", error);
+      res.status(500).json({ message: "Failed to export data" });
+    }
+  });
+
+  // Phase 2: Notification history
+  app.get('/api/user/notification-history', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const limit = parseInt(req.query.limit) || 50;
+      const offset = parseInt(req.query.offset) || 0;
+      
+      const notificationHistory = await db
+        .select()
+        .from(notifications)
+        .where(eq(notifications.userId, userId))
+        .orderBy(desc(notifications.createdAt))
+        .limit(limit)
+        .offset(offset);
+      
+      res.json(notificationHistory);
+    } catch (error: any) {
+      console.error("Error fetching notification history:", error);
+      res.status(500).json({ message: "Failed to fetch notification history" });
+    }
+  });
+
+  // Phase 2: Mark notifications as read
+  app.put('/api/user/notifications/mark-read', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { notificationIds } = req.body;
+      
+      if (notificationIds && Array.isArray(notificationIds)) {
+        await db
+          .update(notifications)
+          .set({ 
+            isRead: true,
+            sentAt: new Date()
+          })
+          .where(and(
+            eq(notifications.userId, userId),
+            inArray(notifications.id, notificationIds)
+          ));
+      } else {
+        // Mark all notifications as read
+        await db
+          .update(notifications)
+          .set({ 
+            isRead: true,
+            sentAt: new Date()
+          })
+          .where(eq(notifications.userId, userId));
+      }
+      
+      res.json({ message: "Notifications marked as read" });
+    } catch (error: any) {
+      console.error("Error marking notifications as read:", error);
+      res.status(500).json({ message: "Failed to mark notifications as read" });
+    }
+  });
+
+  // Phase 3: Prayer Templates
+  app.get('/api/prayer-templates', isAuthenticated, async (req: any, res) => {
+    try {
+      const groupId = req.query.groupId;
+      const templates = await storage.getPrayerTemplates(groupId);
+      res.json(templates);
+    } catch (error: any) {
+      console.error("Error fetching prayer templates:", error);
+      res.status(500).json({ message: "Failed to fetch prayer templates" });
+    }
+  });
+
+  app.post('/api/prayer-templates', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const templateData = insertPrayerTemplateSchema.parse({
+        ...req.body,
+        createdBy: userId,
+      });
+      
+      const template = await storage.createPrayerTemplate(templateData);
+      res.status(201).json(template);
+    } catch (error: any) {
+      console.error("Error creating prayer template:", error);
+      res.status(500).json({ message: "Failed to create prayer template" });
+    }
+  });
+
+  // Phase 3: Prayer Comments
+  app.get('/api/prayers/:id/comments', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const comments = await storage.getPrayerComments(req.params.id, userId);
+      res.json(comments);
+    } catch (error: any) {
+      console.error("Error fetching prayer comments:", error);
+      res.status(500).json({ message: "Failed to fetch prayer comments" });
+    }
+  });
+
+  app.post('/api/prayers/:id/comments', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const commentData = insertPrayerCommentSchema.parse({
+        ...req.body,
+        prayerRequestId: req.params.id,
+        userId,
+      });
+      
+      const comment = await storage.createPrayerComment(commentData);
+      res.status(201).json(comment);
+    } catch (error: any) {
+      console.error("Error creating prayer comment:", error);
+      res.status(500).json({ message: "Failed to create prayer comment" });
+    }
+  });
+
+  // Phase 3: Two-Factor Authentication
+  app.get('/api/user/2fa', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const auth = await storage.getTwoFactorAuth(userId);
+      res.json(auth);
+    } catch (error: any) {
+      console.error("Error fetching 2FA settings:", error);
+      res.status(500).json({ message: "Failed to fetch 2FA settings" });
+    }
+  });
+
+  app.post('/api/user/2fa/setup', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const authData = insertTwoFactorAuthSchema.parse({
+        ...req.body,
+        userId,
+      });
+      
+      const auth = await storage.createTwoFactorAuth(authData);
+      res.status(201).json(auth);
+    } catch (error: any) {
+      console.error("Error setting up 2FA:", error);
+      res.status(500).json({ message: "Failed to setup 2FA" });
+    }
+  });
+
+  app.put('/api/user/2fa', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const auth = await storage.updateTwoFactorAuth(userId, req.body);
+      res.json(auth);
+    } catch (error: any) {
+      console.error("Error updating 2FA:", error);
+      res.status(500).json({ message: "Failed to update 2FA" });
+    }
+  });
+
+  app.delete('/api/user/2fa', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      await storage.deleteTwoFactorAuth(userId);
+      res.json({ message: "2FA disabled successfully" });
+    } catch (error: any) {
+      console.error("Error disabling 2FA:", error);
+      res.status(500).json({ message: "Failed to disable 2FA" });
+    }
+  });
+
+  // Phase 3: Prayer Analytics
+  app.get('/api/groups/:id/prayer-analytics', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const analytics = await storage.getPrayerRequestAnalytics(req.params.id, userId);
+      res.json(analytics);
+    } catch (error: any) {
+      console.error("Error fetching prayer analytics:", error);
+      res.status(500).json({ message: "Failed to fetch prayer analytics" });
     }
   });
 

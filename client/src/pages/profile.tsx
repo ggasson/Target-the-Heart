@@ -13,6 +13,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { signOutUser } from "@/lib/firebase";
 import { insertUserSchema } from "@shared/schema";
 import { z } from "zod";
+import AccountSettingsModal from "@/components/modals/account-settings-modal";
 
 interface ProfileProps {
   onBack?: () => void;
@@ -43,10 +44,11 @@ const normalizeBirthdayForInput = (birthday: any): string => {
 };
 
 export default function Profile({ onBack }: ProfileProps) {
-  const { user } = useAuth();
+  const { user, refreshUserData } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
+  const [showAccountSettings, setShowAccountSettings] = useState(false);
   
   const form = useForm<ProfileUpdateData>({
     resolver: zodResolver(profileUpdateSchema),
@@ -87,19 +89,19 @@ export default function Profile({ onBack }: ProfileProps) {
 
   const updateProfileMutation = useMutation({
     mutationFn: async (profileData: ProfileUpdateData) => {
-      // Filter out null birthday to avoid sending empty strings
+      // Send the birthday value as-is (including null for empty dates)
       const payload = {
         ...profileData,
-        ...(profileData.birthday === null ? { birthday: null } : {}),
+        birthday: profileData.birthday || null, // Convert empty string to null
       };
       await apiRequest("PATCH", "/api/users/me", payload);
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast({
         title: "Profile updated!",
         description: "Your profile has been successfully updated.",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      await refreshUserData(); // Refresh user data from API
       setIsEditing(false);
     },
     onError: () => {
@@ -133,17 +135,11 @@ export default function Profile({ onBack }: ProfileProps) {
   };
 
   const handleNotifications = () => {
-    toast({
-      title: "Notifications",
-      description: "Notification settings coming soon!",
-    });
+    setShowAccountSettings(true);
   };
 
   const handlePrivacySecurity = () => {
-    toast({
-      title: "Privacy & Security",
-      description: "Privacy and security settings coming soon!",
-    });
+    setShowAccountSettings(true);
   };
 
   const handleHelpCenter = () => {
@@ -404,6 +400,12 @@ export default function Profile({ onBack }: ProfileProps) {
           </Form>
         </DialogContent>
       </Dialog>
+
+      {/* Account Settings Modal */}
+      <AccountSettingsModal 
+        open={showAccountSettings} 
+        onOpenChange={setShowAccountSettings} 
+      />
     </div>
   );
 }

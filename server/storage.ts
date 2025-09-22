@@ -1,26 +1,41 @@
 import {
   users,
+  userPreferences,
+  groupNotificationPreferences,
   groups,
   groupMemberships,
   prayerRequests,
+  prayerTemplates,
+  prayerComments,
   prayerResponses,
   chatMessages,
   meetings,
   meetingRsvps,
   groupInvitations,
   notifications,
+  twoFactorAuth,
   type User,
+  type UserPreferences,
+  type GroupNotificationPreferences,
   type UpsertUser,
   type Group,
   type GroupMembership,
   type PrayerRequest,
+  type PrayerTemplate,
+  type PrayerComment,
   type PrayerResponse,
+  type TwoFactorAuth,
   type ChatMessage,
   type Meeting,
   type MeetingRsvp,
   type GroupInvitation,
   type InsertGroup,
+  type InsertUserPreferences,
+  type InsertGroupNotificationPreferences,
   type InsertPrayerRequest,
+  type InsertPrayerTemplate,
+  type InsertPrayerComment,
+  type InsertTwoFactorAuth,
   type InsertGroupMembership,
   type InsertChatMessage,
   type InsertMeeting,
@@ -91,6 +106,7 @@ export interface IStorage {
   
   // Birthday operations
   updateUserBirthday(userId: string, birthday: string | null): Promise<void>;
+  updateUserProfile(userId: string, profileData: { firstName?: string | null; lastName?: string | null; birthday?: string | null }): Promise<void>;
   updateMembershipBirthdaySharing(membershipId: string, shareBirthday: boolean): Promise<void>;
   getGroupTodaysBirthdays(groupId: string): Promise<User[]>;
 }
@@ -1011,6 +1027,18 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, userId));
   }
 
+  async updateUserProfile(userId: string, profileData: { firstName?: string | null; lastName?: string | null; birthday?: string | null }): Promise<void> {
+    await db
+      .update(users)
+      .set({
+        firstName: profileData.firstName,
+        lastName: profileData.lastName,
+        birthday: profileData.birthday,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId));
+  }
+
   async updateMembershipBirthdaySharing(membershipId: string, shareBirthday: boolean): Promise<void> {
     await db
       .update(groupMemberships)
@@ -1039,6 +1067,282 @@ export class DatabaseStorage implements IStorage {
       .orderBy(asc(users.firstName));
 
     return birthdayMembers.map(result => result.user);
+  }
+
+  // User preferences operations
+  async getUserPreferences(userId: string): Promise<UserPreferences | null> {
+    const [preferences] = await db
+      .select()
+      .from(userPreferences)
+      .where(eq(userPreferences.userId, userId))
+      .limit(1);
+    
+    return preferences || null;
+  }
+
+  async createOrUpdateUserPreferences(userId: string, preferences: Partial<InsertUserPreferences>): Promise<UserPreferences> {
+    // Check if preferences exist
+    const existing = await this.getUserPreferences(userId);
+    
+    if (existing) {
+      // Update existing preferences
+      const [updated] = await db
+        .update(userPreferences)
+        .set({
+          ...preferences,
+          updatedAt: new Date(),
+        })
+        .where(eq(userPreferences.userId, userId))
+        .returning();
+      return updated;
+    } else {
+      // Create new preferences
+      const [created] = await db
+        .insert(userPreferences)
+        .values({
+          userId,
+          ...preferences,
+        })
+        .returning();
+      return created;
+    }
+  }
+
+  // Group-specific notification preferences
+  async getGroupNotificationPreferences(userId: string, groupId: string): Promise<GroupNotificationPreferences | null> {
+    const [preferences] = await db
+      .select()
+      .from(groupNotificationPreferences)
+      .where(and(
+        eq(groupNotificationPreferences.userId, userId),
+        eq(groupNotificationPreferences.groupId, groupId)
+      ))
+      .limit(1);
+    
+    return preferences || null;
+  }
+
+  async createOrUpdateGroupNotificationPreferences(userId: string, groupId: string, preferences: Partial<InsertGroupNotificationPreferences>): Promise<GroupNotificationPreferences> {
+    // Check if preferences exist
+    const existing = await this.getGroupNotificationPreferences(userId, groupId);
+    
+    if (existing) {
+      // Update existing preferences
+      const [updated] = await db
+        .update(groupNotificationPreferences)
+        .set({
+          ...preferences,
+          updatedAt: new Date(),
+        })
+        .where(and(
+          eq(groupNotificationPreferences.userId, userId),
+          eq(groupNotificationPreferences.groupId, groupId)
+        ))
+        .returning();
+      return updated;
+    } else {
+      // Create new preferences
+      const [created] = await db
+        .insert(groupNotificationPreferences)
+        .values({
+          userId,
+          groupId,
+          ...preferences,
+        })
+        .returning();
+      return created;
+    }
+  }
+
+  async getAllGroupNotificationPreferences(userId: string): Promise<GroupNotificationPreferences[]> {
+    return await db
+      .select()
+      .from(groupNotificationPreferences)
+      .where(eq(groupNotificationPreferences.userId, userId));
+  }
+
+  // Data export functionality
+  async exportUserData(userId: string): Promise<any> {
+    const user = await this.getUser(userId);
+    const preferences = await this.getUserPreferences(userId);
+    const groupPreferences = await this.getAllGroupNotificationPreferences(userId);
+    const userGroups = await this.getUserGroups(userId);
+    const userPrayers = await this.getUserPrayerRequests(userId);
+    const userPendingRequests = await this.getUserPendingRequests(userId);
+    
+    return {
+      user,
+      preferences,
+      groupNotificationPreferences: groupPreferences,
+      groups: userGroups,
+      prayerRequests: userPrayers,
+      pendingMembershipRequests: userPendingRequests,
+      exportedAt: new Date().toISOString(),
+    };
+  }
+
+  // Phase 3: Prayer Templates
+  async getPrayerTemplates(groupId?: string): Promise<PrayerTemplate[]> {
+    const query = db
+      .select()
+      .from(prayerTemplates)
+      .where(and(
+        eq(prayerTemplates.isActive, true),
+        or(
+          eq(prayerTemplates.isPublic, true),
+          eq(prayerTemplates.groupId, groupId || '')
+        )
+      ))
+      .orderBy(desc(prayerTemplates.usageCount));
+    
+    return await query;
+  }
+
+  async createPrayerTemplate(template: InsertPrayerTemplate): Promise<PrayerTemplate> {
+    const [created] = await db
+      .insert(prayerTemplates)
+      .values(template)
+      .returning();
+    return created;
+  }
+
+  async updatePrayerTemplateUsage(templateId: string): Promise<void> {
+    await db
+      .update(prayerTemplates)
+      .set({
+        usageCount: sql`usage_count + 1`,
+        updatedAt: new Date(),
+      })
+      .where(eq(prayerTemplates.id, templateId));
+  }
+
+  // Phase 3: Prayer Comments
+  async getPrayerComments(prayerRequestId: string, userId?: string): Promise<(PrayerComment & { user: Pick<User, 'id' | 'firstName' | 'lastName' | 'email'> })[]> {
+    const comments = await db
+      .select({
+        id: prayerComments.id,
+        prayerRequestId: prayerComments.prayerRequestId,
+        userId: prayerComments.userId,
+        content: prayerComments.content,
+        isPrivate: prayerComments.isPrivate,
+        parentCommentId: prayerComments.parentCommentId,
+        createdAt: prayerComments.createdAt,
+        updatedAt: prayerComments.updatedAt,
+        user: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          email: users.email,
+        },
+      })
+      .from(prayerComments)
+      .innerJoin(users, eq(prayerComments.userId, users.id))
+      .where(and(
+        eq(prayerComments.prayerRequestId, prayerRequestId),
+        or(
+          eq(prayerComments.isPrivate, false),
+          eq(prayerComments.userId, userId || '')
+        )
+      ))
+      .orderBy(asc(prayerComments.createdAt));
+    
+    return comments;
+  }
+
+  async createPrayerComment(comment: InsertPrayerComment): Promise<PrayerComment> {
+    const [created] = await db
+      .insert(prayerComments)
+      .values(comment)
+      .returning();
+    return created;
+  }
+
+  // Phase 3: Two-Factor Authentication
+  async getTwoFactorAuth(userId: string): Promise<TwoFactorAuth | null> {
+    const [auth] = await db
+      .select()
+      .from(twoFactorAuth)
+      .where(eq(twoFactorAuth.userId, userId))
+      .limit(1);
+    
+    return auth || null;
+  }
+
+  async createTwoFactorAuth(auth: InsertTwoFactorAuth): Promise<TwoFactorAuth> {
+    const [created] = await db
+      .insert(twoFactorAuth)
+      .values(auth)
+      .returning();
+    return created;
+  }
+
+  async updateTwoFactorAuth(userId: string, updates: Partial<InsertTwoFactorAuth>): Promise<TwoFactorAuth> {
+    const [updated] = await db
+      .update(twoFactorAuth)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(eq(twoFactorAuth.userId, userId))
+      .returning();
+    return updated;
+  }
+
+  async deleteTwoFactorAuth(userId: string): Promise<void> {
+    await db
+      .delete(twoFactorAuth)
+      .where(eq(twoFactorAuth.userId, userId));
+  }
+
+  // Phase 3: Enhanced Prayer Request Analytics
+  async getPrayerRequestAnalytics(groupId: string, userId?: string): Promise<any> {
+    const totalRequests = await db
+      .select({ count: count() })
+      .from(prayerRequests)
+      .where(eq(prayerRequests.groupId, groupId));
+
+    const categoryStats = await db
+      .select({
+        category: prayerRequests.category,
+        count: count(),
+      })
+      .from(prayerRequests)
+      .where(eq(prayerRequests.groupId, groupId))
+      .groupBy(prayerRequests.category);
+
+    const priorityStats = await db
+      .select({
+        priority: prayerRequests.priority,
+        count: count(),
+      })
+      .from(prayerRequests)
+      .where(eq(prayerRequests.groupId, groupId))
+      .groupBy(prayerRequests.priority);
+
+    const recentActivity = await db
+      .select({
+        id: prayerRequests.id,
+        title: prayerRequests.title,
+        category: prayerRequests.category,
+        priority: prayerRequests.priority,
+        createdAt: prayerRequests.createdAt,
+        author: {
+          firstName: users.firstName,
+          lastName: users.lastName,
+        },
+      })
+      .from(prayerRequests)
+      .innerJoin(users, eq(prayerRequests.authorId, users.id))
+      .where(eq(prayerRequests.groupId, groupId))
+      .orderBy(desc(prayerRequests.createdAt))
+      .limit(10);
+
+    return {
+      totalRequests: totalRequests[0]?.count || 0,
+      categoryStats,
+      priorityStats,
+      recentActivity,
+    };
   }
 }
 
