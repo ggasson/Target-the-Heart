@@ -863,9 +863,9 @@ export class DatabaseStorage implements IStorage {
     const maybeRsvps = rsvps.filter(r => r.status === "maybe");
     
     const rsvpCounts = {
-      attending: attendingRsvps.reduce((total, rsvp) => total + 1 + parseInt(rsvp.guestCount || '0'), 0),
+      attending: attendingRsvps.reduce((total, rsvp) => total + 1 + parseInt(String(rsvp.guestCount || '0')), 0),
       notAttending: rsvps.filter(r => r.status === "not_attending").length,
-      maybe: maybeRsvps.reduce((total, rsvp) => total + 1 + parseInt(rsvp.guestCount || '0'), 0),
+      maybe: maybeRsvps.reduce((total, rsvp) => total + 1 + parseInt(String(rsvp.guestCount || '0')), 0),
       notResponded: groupMembers.length - rsvps.length
     };
 

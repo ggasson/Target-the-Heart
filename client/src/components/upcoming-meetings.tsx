@@ -46,7 +46,7 @@ export default function UpcomingMeetings({ groupId }: UpcomingMeetingsProps) {
 
   // RSVP mutation
   const rsvpMutation = useMutation({
-    mutationFn: async ({ meetingId, status }: { meetingId: string; status: 'yes' | 'no' | 'maybe' }) => {
+    mutationFn: async ({ meetingId, status }: { meetingId: string; status: 'attending' | 'not_attending' | 'maybe' }) => {
       return apiRequest("POST", `/api/meetings/${meetingId}/rsvp`, { 
         status,
         guestCount: 0,
@@ -68,11 +68,11 @@ export default function UpcomingMeetings({ groupId }: UpcomingMeetingsProps) {
     },
   });
 
-  const handleRsvp = (meetingId: string, status: 'yes' | 'no' | 'maybe') => {
+  const handleRsvp = (meetingId: string, status: 'attending' | 'not_attending' | 'maybe') => {
     rsvpMutation.mutate({ meetingId, status });
   };
 
-  const getRsvpVariant = (status: string) => {
+  const getRsvpVariant = (status: string | null) => {
     switch (status) {
       case 'attending': return 'default';
       case 'not_attending': return 'destructive';

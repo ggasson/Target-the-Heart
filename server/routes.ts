@@ -425,7 +425,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         enumTest: enumTest,
         databaseUrl: process.env.DATABASE_URL?.substring(0, 50) + '...'
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Debug database test failed:', error);
       res.status(500).json({
         error: error.message,
@@ -454,7 +454,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.createPrayerRequestNotifications(prayer.id);
       
       res.status(201).json(prayer);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating prayer request:", error);
       console.error("Error details:", {
         message: error.message,

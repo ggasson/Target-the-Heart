@@ -139,8 +139,8 @@ export default function MeetingDetailPage() {
 
   // Check if user can delete meeting (created by them or they're group admin)
   const canDeleteMeeting = user && meeting && (
-    meeting.createdBy === user.sub || 
-    meeting.group?.adminId === user.sub
+    meeting.createdBy === user.id || 
+    meeting.group?.adminId === user.id
   );
 
   const getCurrentRsvpStatus = () => {
