@@ -52,7 +52,7 @@ function MainApp() {
       case "home":
         return <Home onTabChange={setActiveTab} />;
       case "groups":
-        return <Groups />;
+        return <Groups onTabChange={setActiveTab} />;
       case "prayers":
         return <Prayers />;
       case "chat":

@@ -8,9 +8,10 @@ interface GroupCardProps {
   isMember: boolean;
   onJoinRequest?: () => void;
   onManageGroup?: () => void;
+  onChatGroup?: () => void;
 }
 
-export default function GroupCard({ group, isMember, onJoinRequest, onManageGroup }: GroupCardProps) {
+export default function GroupCard({ group, isMember, onJoinRequest, onManageGroup, onChatGroup }: GroupCardProps) {
   const { user } = useAuth();
   const getStatusColor = (isPublic: boolean) => {
     return isPublic 
@@ -168,6 +169,7 @@ export default function GroupCard({ group, isMember, onJoinRequest, onManageGrou
             <>
               <Button 
                 className="flex-1"
+                onClick={onChatGroup}
                 data-testid={`button-group-chat-${group.id}`}
               >
                 <i className="fas fa-comments mr-2"></i>

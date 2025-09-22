@@ -15,7 +15,11 @@ import GroupCard from "@/components/group-card";
 import GroupsMap from "@/components/groups-map";
 import type { Group } from "@shared/schema";
 
-export default function Groups() {
+interface GroupsProps {
+  onTabChange?: (tab: string) => void;
+}
+
+export default function Groups({ onTabChange }: GroupsProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFilter, setSelectedFilter] = useState("all");
   const [selectedAudience, setSelectedAudience] = useState<string>("all");
@@ -341,6 +345,7 @@ export default function Groups() {
                   group={group} 
                   isMember={true} 
                   onManageGroup={() => handleManageGroup(group)}
+                  onChatGroup={() => onTabChange?.("chat")}
                 />
               ))}
             </div>
