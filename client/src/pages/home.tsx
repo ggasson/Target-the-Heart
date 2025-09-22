@@ -66,10 +66,10 @@ function QuickRSVP({ meetingId, currentRsvp }: QuickRSVPProps) {
       {/* RSVP Status Buttons */}
       <div className="flex space-x-2">
         <Button
-          variant={selectedStatus === 'yes' ? 'default' : 'outline'}
+          variant={selectedStatus === 'attending' ? 'default' : 'outline'}
           size="sm"
-          className={`text-xs ${selectedStatus === 'yes' ? 'bg-green-500 hover:bg-green-600' : 'bg-white/20 hover:bg-white/30 text-white border-white/30'}`}
-          onClick={() => handleRSVP('yes')}
+          className={`text-xs ${selectedStatus === 'attending' ? 'bg-green-500 hover:bg-green-600' : 'bg-white/20 hover:bg-white/30 text-white border-white/30'}`}
+          onClick={() => handleRSVP('attending')}
           disabled={rsvpMutation.isPending}
           data-testid="button-rsvp-attending"
         >
@@ -90,10 +90,10 @@ function QuickRSVP({ meetingId, currentRsvp }: QuickRSVPProps) {
         </Button>
         
         <Button
-          variant={selectedStatus === 'no' ? 'default' : 'outline'}
+          variant={selectedStatus === 'not_attending' ? 'default' : 'outline'}
           size="sm"
-          className={`text-xs ${selectedStatus === 'no' ? 'bg-red-500 hover:bg-red-600' : 'bg-white/20 hover:bg-white/30 text-white border-white/30'}`}
-          onClick={() => handleRSVP('no')}
+          className={`text-xs ${selectedStatus === 'not_attending' ? 'bg-red-500 hover:bg-red-600' : 'bg-white/20 hover:bg-white/30 text-white border-white/30'}`}
+          onClick={() => handleRSVP('not_attending')}
           disabled={rsvpMutation.isPending}
           data-testid="button-rsvp-not-attending"
         >
@@ -103,7 +103,7 @@ function QuickRSVP({ meetingId, currentRsvp }: QuickRSVPProps) {
       </div>
 
       {/* Guest Count Section */}
-      {(selectedStatus === 'yes' || selectedStatus === 'maybe') && (
+      {(selectedStatus === 'attending' || selectedStatus === 'maybe') && (
         <div className="flex items-center space-x-3">
           <span className="text-sm text-white/90">Bringing guests:</span>
           <div className="flex items-center space-x-1">
