@@ -44,7 +44,7 @@ const normalizeBirthdayForInput = (birthday: any): string => {
 };
 
 export default function Profile({ onBack }: ProfileProps) {
-  const { user, refreshUserData } = useAuth();
+  const { user, refreshUserData, getToken } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
@@ -121,10 +121,16 @@ export default function Profile({ onBack }: ProfileProps) {
       const formData = new FormData();
       formData.append('photo', file);
       
+      // Get the auth token properly
+      const token = await getToken();
+      if (!token) {
+        throw new Error('Authentication required');
+      }
+      
       const response = await fetch('/api/users/me/photo', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${await (user as any)?.getIdToken()}`,
+          'Authorization': `Bearer ${token}`,
         },
         body: formData,
       });
