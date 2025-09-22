@@ -175,8 +175,8 @@ export const meetingStatusEnum = pgEnum("meeting_status", [
 
 // RSVP status
 export const rsvpStatusEnum = pgEnum("rsvp_status", [
-  "attending",
-  "not_attending",
+  "yes",
+  "no", 
   "maybe"
 ]);
 
@@ -220,7 +220,7 @@ export const meetingRsvps = pgTable("meeting_rsvps", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   meetingId: varchar("meeting_id").references(() => meetings.id).notNull(),
   userId: varchar("user_id").references(() => users.id).notNull(),
-  status: rsvpStatusEnum("status").notNull(),
+  status: rsvpStatusEnum("status").default("yes"),
   notes: text("notes"),
   guestCount: varchar("guest_count").default("0"), // Number of additional people they're bringing
   createdAt: timestamp("created_at").defaultNow(),
