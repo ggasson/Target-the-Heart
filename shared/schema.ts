@@ -210,6 +210,7 @@ export const meetings = pgTable("meetings", {
   recurringPattern: varchar("recurring_pattern"), // weekly, monthly, etc.
   recurringDayOfWeek: varchar("recurring_day_of_week"), // Monday, Tuesday, etc.
   recurringTime: varchar("recurring_time"), // HH:MM format
+  createdBy: varchar("created_by").references(() => users.id).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -426,6 +427,7 @@ export const insertMeetingSchema = createInsertSchema(meetings).omit({
   updatedAt: true,
 }).extend({
   meetingDate: z.string().datetime().transform((val) => new Date(val)),
+  createdBy: z.string(),
 });
 
 export const insertMeetingRsvpSchema = createInsertSchema(meetingRsvps).omit({

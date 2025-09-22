@@ -535,7 +535,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const meetingData = insertMeetingSchema.parse({
         ...req.body,
-        groupId: req.params.id
+        groupId: req.params.id,
+        createdBy: req.user.claims.sub
       });
       
       const meeting = await storage.createMeeting(meetingData);
