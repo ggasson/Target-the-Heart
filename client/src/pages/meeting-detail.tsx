@@ -39,6 +39,7 @@ export default function MeetingDetailPage() {
       await apiRequest("POST", `/api/meetings/${meetingId}/rsvp`, {
         status,
         notes: notes || "",
+        guestCount: 0,
       });
     },
     onSuccess: () => {

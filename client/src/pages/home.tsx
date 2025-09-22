@@ -28,7 +28,7 @@ function QuickRSVP({ meetingId, currentRsvp }: QuickRSVPProps) {
     mutationFn: async (data: { status: string; guestCount: string }) => {
       return apiRequest('POST', `/api/meetings/${meetingId}/rsvp`, {
         status: data.status,
-        guestCount: data.guestCount,
+        guestCount: parseInt(data.guestCount),
       });
     },
     onSuccess: () => {
@@ -66,10 +66,10 @@ function QuickRSVP({ meetingId, currentRsvp }: QuickRSVPProps) {
       {/* RSVP Status Buttons */}
       <div className="flex space-x-2">
         <Button
-          variant={selectedStatus === 'attending' ? 'default' : 'outline'}
+          variant={selectedStatus === 'yes' ? 'default' : 'outline'}
           size="sm"
-          className={`text-xs ${selectedStatus === 'attending' ? 'bg-green-500 hover:bg-green-600' : 'bg-white/20 hover:bg-white/30 text-white border-white/30'}`}
-          onClick={() => handleRSVP('attending')}
+          className={`text-xs ${selectedStatus === 'yes' ? 'bg-green-500 hover:bg-green-600' : 'bg-white/20 hover:bg-white/30 text-white border-white/30'}`}
+          onClick={() => handleRSVP('yes')}
           disabled={rsvpMutation.isPending}
           data-testid="button-rsvp-attending"
         >
@@ -90,10 +90,10 @@ function QuickRSVP({ meetingId, currentRsvp }: QuickRSVPProps) {
         </Button>
         
         <Button
-          variant={selectedStatus === 'not_attending' ? 'default' : 'outline'}
+          variant={selectedStatus === 'no' ? 'default' : 'outline'}
           size="sm"
-          className={`text-xs ${selectedStatus === 'not_attending' ? 'bg-red-500 hover:bg-red-600' : 'bg-white/20 hover:bg-white/30 text-white border-white/30'}`}
-          onClick={() => handleRSVP('not_attending')}
+          className={`text-xs ${selectedStatus === 'no' ? 'bg-red-500 hover:bg-red-600' : 'bg-white/20 hover:bg-white/30 text-white border-white/30'}`}
+          onClick={() => handleRSVP('no')}
           disabled={rsvpMutation.isPending}
           data-testid="button-rsvp-not-attending"
         >
@@ -103,7 +103,7 @@ function QuickRSVP({ meetingId, currentRsvp }: QuickRSVPProps) {
       </div>
 
       {/* Guest Count Section */}
-      {(selectedStatus === 'attending' || selectedStatus === 'maybe') && (
+      {(selectedStatus === 'yes' || selectedStatus === 'maybe') && (
         <div className="flex items-center space-x-3">
           <span className="text-sm text-white/90">Bringing guests:</span>
           <div className="flex items-center space-x-1">
