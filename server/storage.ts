@@ -388,9 +388,6 @@ export class DatabaseStorage implements IStorage {
 
   // Prayer request operations
   async createPrayerRequest(prayer: InsertPrayerRequest): Promise<PrayerRequest> {
-    console.log('🔍 Storage.createPrayerRequest called with:', JSON.stringify(prayer, null, 2));
-    console.log('🔍 Prayer category specifically:', prayer.category);
-    
     const [newPrayer] = await db
       .insert(prayerRequests)
       .values(prayer)
