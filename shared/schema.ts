@@ -11,6 +11,7 @@ import {
   pgEnum,
   unique,
   date,
+  integer,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
@@ -222,7 +223,7 @@ export const meetingRsvps = pgTable("meeting_rsvps", {
   userId: varchar("user_id").references(() => users.id).notNull(),
   status: rsvpStatusEnum("status").default("yes"),
   notes: text("notes"),
-  guestCount: varchar("guest_count").default("0"), // Number of additional people they're bringing
+  guestCount: integer("guest_count").default(0), // Number of additional people they're bringing
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
