@@ -4,12 +4,18 @@ import { storage } from "./storage";
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
   try {
+    console.log('🔍 Auth middleware called');
+    console.log('🔍 Authorization header:', req.headers.authorization ? 'PRESENT' : 'MISSING');
+    console.log('🔍 VITE_FIREBASE_API_KEY:', process.env.VITE_FIREBASE_API_KEY ? 'SET' : 'MISSING');
+    
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('❌ No Bearer token found');
       return res.status(401).json({ message: "Unauthorized" });
     }
 
     const token = authHeader.split('Bearer ')[1];
+    console.log('🔑 Token extracted, length:', token.length);
     
     // Verify the Firebase ID token using Google's public endpoint
     const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${process.env.VITE_FIREBASE_API_KEY}`, {
@@ -21,6 +27,8 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
         idToken: token
       })
     });
+
+    console.log('🌐 Firebase verification response status:', response.status);
 
     if (!response.ok) {
       console.error('Firebase token verification failed:', response.status, response.statusText);

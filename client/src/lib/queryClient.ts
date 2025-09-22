@@ -11,15 +11,21 @@ async function throwIfResNotOk(res: Response) {
 async function getAuthHeaders() {
   const headers: Record<string, string> = {};
   
+  console.log('🔍 getAuthHeaders called, auth.currentUser:', auth.currentUser ? 'EXISTS' : 'NULL');
+  
   if (auth.currentUser) {
     try {
       const token = await auth.currentUser.getIdToken();
+      console.log('🔑 Token obtained, length:', token.length);
       headers['Authorization'] = `Bearer ${token}`;
     } catch (error) {
-      console.error('Error getting auth token:', error);
+      console.error('❌ Error getting auth token:', error);
     }
+  } else {
+    console.log('❌ No current user found in auth.currentUser');
   }
   
+  console.log('📤 Headers being sent:', headers);
   return headers;
 }
 
