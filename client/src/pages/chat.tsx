@@ -79,7 +79,7 @@ export default function Chat() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-8rem)]">
+    <div className="flex flex-col h-[calc(100vh-12rem)]">
       {/* Chat Header */}
       <div className="bg-card px-6 py-4 border-b border-border flex items-center justify-between flex-shrink-0">
         <div className="flex items-center space-x-3">
