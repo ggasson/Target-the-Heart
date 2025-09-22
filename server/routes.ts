@@ -403,10 +403,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/prayers', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      
+      console.log('🔍 Raw request body:', JSON.stringify(req.body, null, 2));
+      
       const prayerData = insertPrayerRequestSchema.parse({
         ...req.body,
         authorId: userId
       });
+      
+      console.log('✅ Parsed prayer data:', JSON.stringify(prayerData, null, 2));
       
       const prayer = await storage.createPrayerRequest(prayerData);
       
@@ -416,6 +421,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(prayer);
     } catch (error) {
       console.error("Error creating prayer request:", error);
+      if (error.message) {
+        console.error("Error message:", error.message);
+      }
+      if (error.errors) {
+        console.error("Validation errors:", error.errors);
+      }
       res.status(500).json({ message: "Failed to create prayer request" });
     }
   });
