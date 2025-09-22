@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { isAuthenticated } from "./firebaseAuth";
+import { sql } from "./db";
 import { insertGroupSchema, insertPrayerRequestSchema, insertGroupMembershipSchema, insertChatMessageSchema, insertMeetingSchema, insertMeetingRsvpSchema, insertGroupInvitationSchema } from "@shared/schema";
 import { z } from "zod";
 
@@ -399,14 +400,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Debug endpoint to test database connection
+  app.get('/api/debug/database', async (req, res) => {
+    try {
+      console.log('🔍 Debug: Testing database connection...');
+      console.log('🔍 Debug: DATABASE_URL preview:', process.env.DATABASE_URL?.substring(0, 50) + '...');
+      
+      // Test raw SQL connection
+      const rawTest = await sql`SELECT 'health_healing'::prayer_category as test_value`;
+      console.log('✅ Raw SQL test:', rawTest);
+      
+      // Test enum values
+      const enumTest = await sql`
+        SELECT enumlabel FROM pg_type t 
+        JOIN pg_enum e on t.oid = e.enumtypid  
+        WHERE t.typname = 'prayer_category'
+        ORDER BY e.enumsortorder
+      `;
+      console.log('✅ Enum values:', enumTest);
+      
+      res.json({
+        success: true,
+        rawTest: rawTest,
+        enumTest: enumTest,
+        databaseUrl: process.env.DATABASE_URL?.substring(0, 50) + '...'
+      });
+    } catch (error) {
+      console.error('❌ Debug database test failed:', error);
+      res.status(500).json({
+        error: error.message,
+        code: error.code,
+        databaseUrl: process.env.DATABASE_URL?.substring(0, 50) + '...'
+      });
+    }
+  });
+
   // Prayer request routes
   app.post('/api/prayers', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      console.log('🔍 Prayer creation attempt - DATABASE_URL preview:', process.env.DATABASE_URL?.substring(0, 50) + '...');
+      
       const prayerData = insertPrayerRequestSchema.parse({
         ...req.body,
         authorId: userId
       });
+      
+      console.log('🔍 About to create prayer with Drizzle:', prayerData);
       
       const prayer = await storage.createPrayerRequest(prayerData);
       
@@ -416,6 +456,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(prayer);
     } catch (error) {
       console.error("Error creating prayer request:", error);
+      console.error("Error details:", {
+        message: error.message,
+        code: error.code,
+        name: error.name
+      });
       res.status(500).json({ message: "Failed to create prayer request" });
     }
   });
