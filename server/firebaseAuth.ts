@@ -6,7 +6,7 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
   try {
     console.log('🔍 Auth middleware called');
     console.log('🔍 Authorization header:', req.headers.authorization ? 'PRESENT' : 'MISSING');
-    console.log('🔍 VITE_FIREBASE_API_KEY:', process.env.VITE_FIREBASE_API_KEY ? 'SET' : 'MISSING');
+    console.log('🔍 FIREBASE_API_KEY:', process.env.FIREBASE_API_KEY ? 'SET' : 'MISSING');
     
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -18,7 +18,7 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
     console.log('🔑 Token extracted, length:', token.length);
     
     // Verify the Firebase ID token using Google's public endpoint
-    const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${process.env.VITE_FIREBASE_API_KEY}`, {
+    const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${process.env.FIREBASE_API_KEY}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
