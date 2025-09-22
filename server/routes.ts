@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import multer from "multer";
 import { storage } from "./storage";
 import { isAuthenticated } from "./firebaseAuth";
 import { sql } from "./db";
@@ -7,6 +8,14 @@ import { insertGroupSchema, insertPrayerRequestSchema, insertGroupMembershipSche
 import { eq, and, desc, inArray } from "drizzle-orm";
 import { db } from "./db";
 import { z } from "zod";
+
+// Configure multer for file uploads
+const upload = multer({
+  storage: multer.memoryStorage(), // Store files in memory as buffers
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  },
+});
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // No auth setup needed for Firebase (handled in middleware)
@@ -87,6 +96,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Upload profile image
+  app.post('/api/users/me/photo', isAuthenticated, upload.single('photo'), async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      if (!req.file) {
+        return res.status(400).json({ message: "No image file provided" });
+      }
+
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+      if (!allowedTypes.includes(req.file.mimetype)) {
+        return res.status(400).json({ message: "Invalid file type. Only JPEG, PNG, GIF, and WebP images are allowed." });
+      }
+
+      // Validate file size (5MB max)
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      if (req.file.size > maxSize) {
+        return res.status(400).json({ message: "File too large. Maximum size is 5MB." });
+      }
+
+      // For now, we'll store the image data as base64 in the database
+      // In production, you'd want to use a service like AWS S3, Cloudinary, or similar
+      const base64Image = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+      
+      // Update user profile with new image
+      await storage.updateUserProfile(userId, { profileImageUrl: base64Image });
+      
+      res.json({ 
+        message: "Profile photo updated successfully",
+        imageUrl: base64Image 
+      });
+    } catch (error: any) {
+      console.error("Error uploading profile photo:", error);
+      res.status(500).json({ message: "Failed to upload profile photo" });
+    }
+  });
+  
   // Update user profile
   app.patch('/api/users/me', isAuthenticated, async (req: any, res) => {
     try {

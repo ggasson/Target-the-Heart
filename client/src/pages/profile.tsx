@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
@@ -49,6 +49,8 @@ export default function Profile({ onBack }: ProfileProps) {
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
   const [showAccountSettings, setShowAccountSettings] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   
   const form = useForm<ProfileUpdateData>({
     resolver: zodResolver(profileUpdateSchema),
@@ -113,6 +115,44 @@ export default function Profile({ onBack }: ProfileProps) {
     },
   });
 
+  // Photo upload mutation
+  const uploadPhotoMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append('photo', file);
+      
+      const response = await fetch('/api/users/me/photo', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${await (user as any)?.getIdToken()}`,
+        },
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to upload photo');
+      }
+      
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      refreshUserData(); // Refresh user data to update UI
+      toast({
+        title: "Photo Updated",
+        description: "Your profile photo has been updated successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Upload Failed",
+        description: error.message || "Failed to upload photo",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleEditProfile = () => {
     // Always reset form with latest user data when opening edit dialog
     const latestFormData = {
@@ -123,6 +163,48 @@ export default function Profile({ onBack }: ProfileProps) {
     
     form.reset(latestFormData);
     setIsEditing(true);
+  };
+
+  const handlePhotoUpload = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      toast({
+        title: "Invalid File Type",
+        description: "Please select a JPEG, PNG, GIF, or WebP image.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file size (5MB max)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      toast({
+        title: "File Too Large",
+        description: "Please select an image smaller than 5MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUploadingPhoto(true);
+    try {
+      await uploadPhotoMutation.mutateAsync(file);
+    } finally {
+      setIsUploadingPhoto(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
   };
 
   const handleSaveProfile = (data: ProfileUpdateData) => {
@@ -208,7 +290,7 @@ export default function Profile({ onBack }: ProfileProps) {
       {/* Profile Header */}
       <div className="gradient-bg px-6 py-8 pb-16">
         <div className="text-center">
-          <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
+          <div className="relative w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
             {(user as any)?.profileImageUrl ? (
               <img 
                 src={(user as any).profileImageUrl} 
@@ -219,7 +301,31 @@ export default function Profile({ onBack }: ProfileProps) {
             ) : (
               <i className="fas fa-user text-3xl text-white"></i>
             )}
+            
+            {/* Photo Upload Button */}
+            <button
+              onClick={handlePhotoUpload}
+              disabled={isUploadingPhoto}
+              className="absolute -bottom-1 -right-1 w-8 h-8 bg-primary rounded-full flex items-center justify-center shadow-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
+              data-testid="button-upload-photo"
+            >
+              {isUploadingPhoto ? (
+                <i className="fas fa-spinner fa-spin text-white text-sm"></i>
+              ) : (
+                <i className="fas fa-camera text-white text-sm"></i>
+              )}
+            </button>
           </div>
+          
+          {/* Hidden file input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+            onChange={handleFileChange}
+            className="hidden"
+            data-testid="input-photo-upload"
+          />
           <h2 className="text-xl font-bold text-white mb-1" data-testid="text-user-name">
             {(user as any)?.firstName && (user as any)?.lastName 
               ? `${(user as any).firstName} ${(user as any).lastName}`

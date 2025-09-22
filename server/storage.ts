@@ -106,7 +106,7 @@ export interface IStorage {
   
   // Birthday operations
   updateUserBirthday(userId: string, birthday: string | null): Promise<void>;
-  updateUserProfile(userId: string, profileData: { firstName?: string | null; lastName?: string | null; birthday?: string | null }): Promise<void>;
+  updateUserProfile(userId: string, profileData: { firstName?: string | null; lastName?: string | null; birthday?: string | null; profileImageUrl?: string | null }): Promise<void>;
   updateMembershipBirthdaySharing(membershipId: string, shareBirthday: boolean): Promise<void>;
   getGroupTodaysBirthdays(groupId: string): Promise<User[]>;
 }
@@ -1027,13 +1027,14 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, userId));
   }
 
-  async updateUserProfile(userId: string, profileData: { firstName?: string | null; lastName?: string | null; birthday?: string | null }): Promise<void> {
+  async updateUserProfile(userId: string, profileData: { firstName?: string | null; lastName?: string | null; birthday?: string | null; profileImageUrl?: string | null }): Promise<void> {
     await db
       .update(users)
       .set({
         firstName: profileData.firstName,
         lastName: profileData.lastName,
         birthday: profileData.birthday,
+        profileImageUrl: profileData.profileImageUrl,
         updatedAt: new Date(),
       })
       .where(eq(users.id, userId));
