@@ -619,20 +619,37 @@ export class DatabaseStorage implements IStorage {
 
   // RSVP operations
   async createOrUpdateRsvp(rsvp: InsertMeetingRsvp): Promise<MeetingRsvp> {
-    const [newRsvp] = await db
-      .insert(meetingRsvps)
-      .values(rsvp)
-      .onConflictDoUpdate({
-        target: [meetingRsvps.meetingId, meetingRsvps.userId],
-        set: {
-          status: sql`excluded.status`,
-          notes: sql`excluded.notes`,
-          guestCount: sql`excluded.guest_count`,
-          updatedAt: sql`now()`,
-        },
-      })
-      .returning();
-    return newRsvp;
+    // Try to find existing RSVP first
+    const existingRsvp = await db
+      .select()
+      .from(meetingRsvps)
+      .where(and(
+        eq(meetingRsvps.meetingId, rsvp.meetingId),
+        eq(meetingRsvps.userId, rsvp.userId)
+      ))
+      .limit(1);
+
+    if (existingRsvp.length > 0) {
+      // Update existing RSVP
+      const [updatedRsvp] = await db
+        .update(meetingRsvps)
+        .set({
+          status: rsvp.status,
+          notes: rsvp.notes,
+          guestCount: rsvp.guestCount,
+          updatedAt: new Date(),
+        })
+        .where(eq(meetingRsvps.id, existingRsvp[0].id))
+        .returning();
+      return updatedRsvp;
+    } else {
+      // Create new RSVP
+      const [newRsvp] = await db
+        .insert(meetingRsvps)
+        .values(rsvp)
+        .returning();
+      return newRsvp;
+    }
   }
 
   async getMeetingRsvps(meetingId: string): Promise<(MeetingRsvp & { user: User })[]> {
