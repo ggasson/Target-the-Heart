@@ -815,7 +815,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           inArray(meetings.groupId, groupIds),
-          sql`${meetings.meetingDate} >= ${now}`,
+          sql`${meetings.meetingDate} >= ${now.toISOString()}`,
           eq(meetings.status, "scheduled")
         )
       )
