@@ -15,6 +15,7 @@ import Chat from "@/pages/chat";
 import Profile from "@/pages/profile";
 import InvitePage from "@/pages/invite";
 import MeetingDetailPage from "@/pages/meeting-detail";
+import AdminDashboard from "@/pages/admin";
 import BottomNavigation from "@/components/bottom-navigation";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import NotFound from "@/pages/not-found";
@@ -46,6 +47,7 @@ function NotificationButton() {
 
 function MainApp() {
   const [activeTab, setActiveTab] = useState("home");
+  const { user } = useAuth();
 
   const renderActiveTab = () => {
     switch (activeTab) {
@@ -82,6 +84,16 @@ function MainApp() {
         <div className="flex items-center space-x-3">
           <ThemeSwitcher />
           <NotificationButton />
+          {user?.email === "garygasson@gmail.com" && (
+            <button 
+              onClick={() => window.location.href = "/admin"}
+              className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center"
+              data-testid="button-admin"
+              title="Admin Dashboard"
+            >
+              <i className="fas fa-crown text-blue-600"></i>
+            </button>
+          )}
           <button 
             onClick={() => setActiveTab("profile")}
             className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center"
@@ -142,6 +154,7 @@ function Router() {
         <>
           <Route path="/" component={MainApp} />
           <Route path="/meeting/:meetingId" component={MeetingDetailPage} />
+          <Route path="/admin" component={AdminDashboard} />
         </>
       )}
       <Route component={NotFound} />

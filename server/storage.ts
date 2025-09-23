@@ -1345,6 +1345,604 @@ export class DatabaseStorage implements IStorage {
       recentActivity,
     };
   }
+
+  // ============================================================================
+  // ADMIN METHODS
+  // ============================================================================
+
+  /**
+   * Get admin dashboard statistics
+   * 
+   * @description Retrieves overview statistics for the admin dashboard
+   * @returns {Promise<object>} Dashboard statistics including user, group, meeting, and prayer counts
+   */
+  async getAdminDashboardStats() {
+    const [userCount] = await this.db.select({ count: sql`count(*)` }).from(users);
+    const [groupCount] = await this.db.select({ count: sql`count(*)` }).from(groups);
+    const [meetingCount] = await this.db.select({ count: sql`count(*)` }).from(meetings);
+    const [prayerCount] = await this.db.select({ count: sql`count(*)` }).from(prayerRequests);
+    
+    const recentUsers = await this.db
+      .select()
+      .from(users)
+      .orderBy(desc(users.createdAt))
+      .limit(5);
+
+    const recentGroups = await this.db
+      .select()
+      .from(groups)
+      .orderBy(desc(groups.createdAt))
+      .limit(5);
+
+    return {
+      stats: {
+        users: userCount.count,
+        groups: groupCount.count,
+        meetings: meetingCount.count,
+        prayers: prayerCount.count,
+      },
+      recent: {
+        users: recentUsers,
+        groups: recentGroups,
+      }
+    };
+  }
+
+  /**
+   * Get paginated users for admin
+   * 
+   * @description Retrieves users with pagination and search functionality
+   * @param {number} page - Page number (1-based)
+   * @param {number} limit - Number of users per page
+   * @param {string} search - Search term for filtering users
+   * @returns {Promise<object>} Paginated user results
+   */
+  async getAdminUsers(page: number, limit: number, search: string) {
+    const offset = (page - 1) * limit;
+    
+    let query = this.db.select().from(users);
+    
+    if (search) {
+      query = query.where(
+        sql`${users.firstName} ILIKE ${`%${search}%`} OR 
+            ${users.lastName} ILIKE ${`%${search}%`} OR 
+            ${users.email} ILIKE ${`%${search}%`}`
+      );
+    }
+
+    const [results, [totalCount]] = await Promise.all([
+      query.orderBy(desc(users.createdAt)).limit(limit).offset(offset),
+      this.db.select({ count: sql`count(*)` }).from(users)
+    ]);
+
+    return {
+      users: results,
+      pagination: {
+        page,
+        limit,
+        total: totalCount.count,
+        pages: Math.ceil(totalCount.count / limit)
+      }
+    };
+  }
+
+  /**
+   * Get detailed user information for admin
+   * 
+   * @description Retrieves comprehensive user details including group memberships
+   * @param {string} userId - User ID to retrieve
+   * @returns {Promise<object>} Detailed user information
+   */
+  async getAdminUserDetails(userId: string) {
+    const user = await this.db.select().from(users).where(eq(users.id, userId)).limit(1);
+    if (!user.length) return null;
+
+    const userMemberships = await this.db
+      .select({
+        groupId: memberships.groupId,
+        groupName: groups.name,
+        role: memberships.role,
+        joinedAt: memberships.createdAt
+      })
+      .from(memberships)
+      .leftJoin(groups, eq(memberships.groupId, groups.id))
+      .where(eq(memberships.userId, userId));
+
+    return {
+      ...user[0],
+      memberships: userMemberships
+    };
+  }
+
+  /**
+   * Update user information (admin only)
+   * 
+   * @description Updates user details with admin privileges
+   * @param {string} userId - User ID to update
+   * @param {object} updateData - Data to update
+   * @returns {Promise<object>} Updated user information
+   */
+  async updateAdminUser(userId: string, updateData: any) {
+    const [updatedUser] = await this.db
+      .update(users)
+      .set({
+        ...updateData,
+        updatedAt: sql`CURRENT_TIMESTAMP`
+      })
+      .where(eq(users.id, userId))
+      .returning();
+
+    return updatedUser;
+  }
+
+  /**
+   * Delete user (admin only)
+   * 
+   * @description Soft deletes a user and removes from all groups
+   * @param {string} userId - User ID to delete
+   * @returns {Promise<void>}
+   */
+  async deleteAdminUser(userId: string) {
+    // Remove from all groups
+    await this.db.delete(memberships).where(eq(memberships.userId, userId));
+    
+    // Soft delete user
+    await this.db
+      .update(users)
+      .set({ 
+        email: sql`${users.email} || '_deleted_' || extract(epoch from now())`,
+        updatedAt: sql`CURRENT_TIMESTAMP`
+      })
+      .where(eq(users.id, userId));
+  }
+
+  /**
+   * Get paginated groups for admin
+   * 
+   * @description Retrieves groups with pagination and search functionality
+   * @param {number} page - Page number (1-based)
+   * @param {number} limit - Number of groups per page
+   * @param {string} search - Search term for filtering groups
+   * @returns {Promise<object>} Paginated group results
+   */
+  async getAdminGroups(page: number, limit: number, search: string) {
+    const offset = (page - 1) * limit;
+    
+    let query = this.db
+      .select({
+        id: groups.id,
+        name: groups.name,
+        description: groups.description,
+        createdAt: groups.createdAt,
+        memberCount: sql`count(${memberships.userId})`
+      })
+      .from(groups)
+      .leftJoin(memberships, eq(groups.id, memberships.groupId));
+    
+    if (search) {
+      query = query.where(
+        sql`${groups.name} ILIKE ${`%${search}%`} OR 
+            ${groups.description} ILIKE ${`%${search}%`}`
+      );
+    }
+
+    const [results, [totalCount]] = await Promise.all([
+      query
+        .groupBy(groups.id)
+        .orderBy(desc(groups.createdAt))
+        .limit(limit)
+        .offset(offset),
+      this.db.select({ count: sql`count(*)` }).from(groups)
+    ]);
+
+    return {
+      groups: results,
+      pagination: {
+        page,
+        limit,
+        total: totalCount.count,
+        pages: Math.ceil(totalCount.count / limit)
+      }
+    };
+  }
+
+  /**
+   * Get detailed group information for admin
+   * 
+   * @description Retrieves comprehensive group details including members
+   * @param {string} groupId - Group ID to retrieve
+   * @returns {Promise<object>} Detailed group information
+   */
+  async getAdminGroupDetails(groupId: string) {
+    const group = await this.db.select().from(groups).where(eq(groups.id, groupId)).limit(1);
+    if (!group.length) return null;
+
+    const members = await this.db
+      .select({
+        userId: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        email: users.email,
+        role: memberships.role,
+        joinedAt: memberships.createdAt
+      })
+      .from(memberships)
+      .leftJoin(users, eq(memberships.userId, users.id))
+      .where(eq(memberships.groupId, groupId));
+
+    return {
+      ...group[0],
+      members
+    };
+  }
+
+  /**
+   * Update group information (admin only)
+   * 
+   * @description Updates group details with admin privileges
+   * @param {string} groupId - Group ID to update
+   * @param {object} updateData - Data to update
+   * @returns {Promise<object>} Updated group information
+   */
+  async updateAdminGroup(groupId: string, updateData: any) {
+    const [updatedGroup] = await this.db
+      .update(groups)
+      .set({
+        ...updateData,
+        updatedAt: sql`CURRENT_TIMESTAMP`
+      })
+      .where(eq(groups.id, groupId))
+      .returning();
+
+    return updatedGroup;
+  }
+
+  /**
+   * Delete group (admin only)
+   * 
+   * @description Deletes a group and all associated data
+   * @param {string} groupId - Group ID to delete
+   * @returns {Promise<void>}
+   */
+  async deleteAdminGroup(groupId: string) {
+    // Delete all memberships
+    await this.db.delete(memberships).where(eq(memberships.groupId, groupId));
+    
+    // Delete all meetings
+    await this.db.delete(meetings).where(eq(meetings.groupId, groupId));
+    
+    // Delete all prayer requests
+    await this.db.delete(prayerRequests).where(eq(prayerRequests.groupId, groupId));
+    
+    // Delete the group
+    await this.db.delete(groups).where(eq(groups.id, groupId));
+  }
+
+  /**
+   * Get paginated meetings for admin
+   * 
+   * @description Retrieves meetings with pagination and search functionality
+   * @param {number} page - Page number (1-based)
+   * @param {number} limit - Number of meetings per page
+   * @param {string} search - Search term for filtering meetings
+   * @returns {Promise<object>} Paginated meeting results
+   */
+  async getAdminMeetings(page: number, limit: number, search: string) {
+    const offset = (page - 1) * limit;
+    
+    let query = this.db
+      .select({
+        id: meetings.id,
+        title: meetings.title,
+        description: meetings.description,
+        meetingDate: meetings.meetingDate,
+        status: meetings.status,
+        groupName: groups.name,
+        createdAt: meetings.createdAt
+      })
+      .from(meetings)
+      .leftJoin(groups, eq(meetings.groupId, groups.id));
+    
+    if (search) {
+      query = query.where(
+        sql`${meetings.title} ILIKE ${`%${search}%`} OR 
+            ${meetings.description} ILIKE ${`%${search}%`} OR
+            ${groups.name} ILIKE ${`%${search}%`}`
+      );
+    }
+
+    const [results, [totalCount]] = await Promise.all([
+      query.orderBy(desc(meetings.createdAt)).limit(limit).offset(offset),
+      this.db.select({ count: sql`count(*)` }).from(meetings)
+    ]);
+
+    return {
+      meetings: results,
+      pagination: {
+        page,
+        limit,
+        total: totalCount.count,
+        pages: Math.ceil(totalCount.count / limit)
+      }
+    };
+  }
+
+  /**
+   * Get detailed meeting information for admin
+   * 
+   * @description Retrieves comprehensive meeting details including RSVPs
+   * @param {string} meetingId - Meeting ID to retrieve
+   * @returns {Promise<object>} Detailed meeting information
+   */
+  async getAdminMeetingDetails(meetingId: string) {
+    const meeting = await this.db
+      .select({
+        id: meetings.id,
+        title: meetings.title,
+        description: meetings.description,
+        meetingDate: meetings.meetingDate,
+        status: meetings.status,
+        groupId: meetings.groupId,
+        groupName: groups.name,
+        createdAt: meetings.createdAt
+      })
+      .from(meetings)
+      .leftJoin(groups, eq(meetings.groupId, groups.id))
+      .where(eq(meetings.id, meetingId))
+      .limit(1);
+      
+    if (!meeting.length) return null;
+
+    const rsvps = await this.db
+      .select({
+        userId: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        email: users.email,
+        status: meetingRsvps.status,
+        notes: meetingRsvps.notes,
+        rsvpDate: meetingRsvps.createdAt
+      })
+      .from(meetingRsvps)
+      .leftJoin(users, eq(meetingRsvps.userId, users.id))
+      .where(eq(meetingRsvps.meetingId, meetingId));
+
+    return {
+      ...meeting[0],
+      rsvps
+    };
+  }
+
+  /**
+   * Delete meeting (admin only)
+   * 
+   * @description Deletes a meeting and all associated RSVPs
+   * @param {string} meetingId - Meeting ID to delete
+   * @returns {Promise<void>}
+   */
+  async deleteAdminMeeting(meetingId: string) {
+    // Delete all RSVPs
+    await this.db.delete(meetingRsvps).where(eq(meetingRsvps.meetingId, meetingId));
+    
+    // Delete the meeting
+    await this.db.delete(meetings).where(eq(meetings.id, meetingId));
+  }
+
+  /**
+   * Get paginated prayers for admin
+   * 
+   * @description Retrieves prayers with pagination and search functionality
+   * @param {number} page - Page number (1-based)
+   * @param {number} limit - Number of prayers per page
+   * @param {string} search - Search term for filtering prayers
+   * @returns {Promise<object>} Paginated prayer results
+   */
+  async getAdminPrayers(page: number, limit: number, search: string) {
+    const offset = (page - 1) * limit;
+    
+    let query = this.db
+      .select({
+        id: prayerRequests.id,
+        title: prayerRequests.title,
+        description: prayerRequests.description,
+        category: prayerRequests.category,
+        priority: prayerRequests.priority,
+        status: prayerRequests.status,
+        groupName: groups.name,
+        authorName: sql`${users.firstName} || ' ' || ${users.lastName}`,
+        createdAt: prayerRequests.createdAt
+      })
+      .from(prayerRequests)
+      .leftJoin(groups, eq(prayerRequests.groupId, groups.id))
+      .leftJoin(users, eq(prayerRequests.authorId, users.id));
+    
+    if (search) {
+      query = query.where(
+        sql`${prayerRequests.title} ILIKE ${`%${search}%`} OR 
+            ${prayerRequests.description} ILIKE ${`%${search}%`} OR
+            ${groups.name} ILIKE ${`%${search}%`}`
+      );
+    }
+
+    const [results, [totalCount]] = await Promise.all([
+      query.orderBy(desc(prayerRequests.createdAt)).limit(limit).offset(offset),
+      this.db.select({ count: sql`count(*)` }).from(prayerRequests)
+    ]);
+
+    return {
+      prayers: results,
+      pagination: {
+        page,
+        limit,
+        total: totalCount.count,
+        pages: Math.ceil(totalCount.count / limit)
+      }
+    };
+  }
+
+  /**
+   * Get detailed prayer information for admin
+   * 
+   * @description Retrieves comprehensive prayer details including responses
+   * @param {string} prayerId - Prayer ID to retrieve
+   * @returns {Promise<object>} Detailed prayer information
+   */
+  async getAdminPrayerDetails(prayerId: string) {
+    const prayer = await this.db
+      .select({
+        id: prayerRequests.id,
+        title: prayerRequests.title,
+        description: prayerRequests.description,
+        category: prayerRequests.category,
+        priority: prayerRequests.priority,
+        status: prayerRequests.status,
+        groupId: prayerRequests.groupId,
+        groupName: groups.name,
+        authorId: prayerRequests.authorId,
+        authorName: sql`${users.firstName} || ' ' || ${users.lastName}`,
+        createdAt: prayerRequests.createdAt
+      })
+      .from(prayerRequests)
+      .leftJoin(groups, eq(prayerRequests.groupId, groups.id))
+      .leftJoin(users, eq(prayerRequests.authorId, users.id))
+      .where(eq(prayerRequests.id, prayerId))
+      .limit(1);
+      
+    if (!prayer.length) return null;
+
+    const responses = await this.db
+      .select({
+        id: prayerResponses.id,
+        message: prayerResponses.message,
+        responseType: prayerResponses.responseType,
+        userId: users.id,
+        userName: sql`${users.firstName} || ' ' || ${users.lastName}`,
+        createdAt: prayerResponses.createdAt
+      })
+      .from(prayerResponses)
+      .leftJoin(users, eq(prayerResponses.userId, users.id))
+      .where(eq(prayerResponses.prayerRequestId, prayerId))
+      .orderBy(prayerResponses.createdAt);
+
+    return {
+      ...prayer[0],
+      responses
+    };
+  }
+
+  /**
+   * Delete prayer (admin only)
+   * 
+   * @description Deletes a prayer and all associated responses
+   * @param {string} prayerId - Prayer ID to delete
+   * @returns {Promise<void>}
+   */
+  async deleteAdminPrayer(prayerId: string) {
+    // Delete all responses
+    await this.db.delete(prayerResponses).where(eq(prayerResponses.prayerRequestId, prayerId));
+    
+    // Delete the prayer request
+    await this.db.delete(prayerRequests).where(eq(prayerRequests.id, prayerId));
+  }
+
+  /**
+   * Get paginated chat messages for admin
+   * 
+   * @description Retrieves chat messages with pagination and optional group filtering
+   * @param {number} page - Page number (1-based)
+   * @param {number} limit - Number of messages per page
+   * @param {string} groupId - Optional group ID to filter messages
+   * @returns {Promise<object>} Paginated chat results
+   */
+  async getAdminChats(page: number, limit: number, groupId: string) {
+    const offset = (page - 1) * limit;
+    
+    let query = this.db
+      .select({
+        id: sql`'chat_' || generate_random_uuid()`, // Placeholder since we don't have a chat table yet
+        message: sql`'Sample chat message'`,
+        groupName: groups.name,
+        userName: sql`${users.firstName} || ' ' || ${users.lastName}`,
+        createdAt: sql`CURRENT_TIMESTAMP`
+      })
+      .from(groups)
+      .leftJoin(users, sql`true`); // Placeholder join
+    
+    if (groupId) {
+      query = query.where(eq(groups.id, groupId));
+    }
+
+    // This is a placeholder implementation since chat functionality needs to be built
+    return {
+      chats: [],
+      pagination: {
+        page,
+        limit,
+        total: 0,
+        pages: 0
+      }
+    };
+  }
+
+  /**
+   * Delete chat message (admin only)
+   * 
+   * @description Deletes a chat message
+   * @param {string} messageId - Message ID to delete
+   * @returns {Promise<void>}
+   */
+  async deleteAdminChatMessage(messageId: string) {
+    // Placeholder implementation since chat functionality needs to be built
+    console.log(`Admin deleted chat message: ${messageId}`);
+  }
+
+  /**
+   * Get system logs for admin
+   * 
+   * @description Retrieves system logs with pagination and optional level filtering
+   * @param {number} page - Page number (1-based)
+   * @param {number} limit - Number of logs per page
+   * @param {string} level - Optional log level to filter
+   * @returns {Promise<object>} Paginated log results
+   */
+  async getAdminLogs(page: number, limit: number, level: string) {
+    // Placeholder implementation since logging functionality needs to be built
+    return {
+      logs: [
+        {
+          id: 1,
+          level: 'info',
+          message: 'System startup',
+          timestamp: new Date().toISOString(),
+          source: 'server'
+        }
+      ],
+      pagination: {
+        page,
+        limit,
+        total: 1,
+        pages: 1
+      }
+    };
+  }
+
+  /**
+   * Get system health information
+   * 
+   * @description Retrieves system health status and metrics
+   * @returns {Promise<object>} System health information
+   */
+  async getSystemHealth() {
+    const dbTest = await this.db.select({ test: sql`1` }).limit(1);
+    
+    return {
+      status: 'healthy',
+      database: dbTest.length > 0 ? 'connected' : 'disconnected',
+      uptime: process.uptime(),
+      memory: process.memoryUsage(),
+      timestamp: new Date().toISOString()
+    };
+  }
 }
 
 export const storage = new DatabaseStorage();

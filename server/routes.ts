@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import multer from "multer";
 import { storage } from "./storage";
 import { isAuthenticated } from "./firebaseAuth";
+import { registerAdminRoutes } from "./adminRoutes";
 import { sql } from "./db";
 import { insertGroupSchema, insertPrayerRequestSchema, insertGroupMembershipSchema, insertChatMessageSchema, insertMeetingSchema, insertMeetingRsvpSchema, insertGroupInvitationSchema, insertNotificationSchema, insertPrayerTemplateSchema, insertPrayerCommentSchema, insertTwoFactorAuthSchema, notifications } from "@shared/schema";
 import { eq, and, desc, inArray } from "drizzle-orm";
@@ -1442,6 +1443,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to fetch prayer analytics" });
     }
   });
+
+  // Register admin routes
+  registerAdminRoutes(app);
 
   const httpServer = createServer(app);
   return httpServer;
