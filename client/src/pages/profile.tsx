@@ -118,18 +118,47 @@ export default function Profile({ onBack }: ProfileProps) {
   // Photo upload mutation
   const uploadPhotoMutation = useMutation({
     mutationFn: async (file: File) => {
-      console.log('📸 Frontend: Starting photo upload', file.name, file.type, file.size);
+      console.log('🚀 ============================================');
+      console.log('📸 FRONTEND: STARTING PHOTO UPLOAD PROCESS');
+      console.log('🚀 ============================================');
+      console.log('📸 Timestamp:', new Date().toISOString());
+      console.log('📸 File details:', {
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        lastModified: file.lastModified,
+        lastModifiedDate: new Date(file.lastModified).toISOString()
+      });
       
+      console.log('📦 Creating FormData object...');
       const formData = new FormData();
       formData.append('photo', file);
       
-      console.log('📸 Frontend: FormData created, sending to API');
+      // Debug FormData creation
+      console.log('📦 FormData created successfully');
+      console.log('📦 FormData has photo:', formData.has('photo'));
+      console.log('📦 FormData entries:');
+      for (let [key, value] of formData.entries()) {
+        console.log(`📦   ${key}:`, value instanceof File ? `File(${value.name})` : value);
+      }
       
+      console.log('🔐 Getting authentication token...');
       // Get the auth token properly
       const token = await getToken();
       if (!token) {
+        console.error('❌ No authentication token available');
         throw new Error('Authentication required');
       }
+      console.log('✅ Authentication token obtained (length:', token.length, ')');
+      console.log('🔍 Token preview:', token.substring(0, 20) + '...');
+      
+      console.log('🌐 =========================================');
+      console.log('🌐 MAKING HTTP REQUEST TO SERVER');
+      console.log('🌐 =========================================');
+      console.log('🌐 URL: /api/users/me/photo');
+      console.log('🌐 Method: POST');
+      console.log('🌐 Headers: Authorization Bearer token');
+      console.log('🌐 Body: FormData with photo file');
       
       // Use fetch directly for file uploads (FormData needs special handling)
       const response = await fetch('/api/users/me/photo', {
@@ -141,16 +170,63 @@ export default function Profile({ onBack }: ProfileProps) {
         body: formData,
       });
       
-      console.log('📸 Frontend: Response received', response.status, response.statusText);
+      console.log('📡 =========================================');
+      console.log('📡 SERVER RESPONSE RECEIVED');
+      console.log('📡 =========================================');
+      console.log('📡 Response status:', response.status);
+      console.log('📡 Response status text:', response.statusText);
+      console.log('📡 Response ok:', response.ok);
+      console.log('📡 Response headers:');
+      response.headers.forEach((value, key) => {
+        console.log(`📡   ${key}: ${value}`);
+      });
       
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('📸 Frontend: Upload failed', errorText);
+        console.error('❌ =====================================');
+        console.error('❌ UPLOAD FAILED - SERVER ERROR');
+        console.error('❌ =====================================');
+        console.error('❌ Status:', response.status);
+        console.error('❌ Status text:', response.statusText);
+        
+        let errorText;
+        try {
+          errorText = await response.text();
+          console.error('❌ Error response body:', errorText);
+          
+          // Try to parse as JSON for more details
+          try {
+            const errorJson = JSON.parse(errorText);
+            console.error('❌ Parsed error JSON:', errorJson);
+          } catch (parseError) {
+            console.error('❌ Error response is not JSON');
+          }
+        } catch (textError) {
+          console.error('❌ Could not read error response:', textError);
+          errorText = 'Unknown server error';
+        }
+        
         throw new Error(errorText || 'Failed to upload photo');
       }
       
-      const result = await response.json();
-      console.log('📸 Frontend: Upload successful', result);
+      console.log('✅ =========================================');
+      console.log('✅ UPLOAD SUCCESSFUL - PARSING RESPONSE');
+      console.log('✅ =========================================');
+      
+      let result;
+      try {
+        result = await response.json();
+        console.log('✅ Response parsed successfully:', {
+          message: result.message,
+          hasImageUrl: !!result.imageUrl,
+          imageUrlLength: result.imageUrl?.length,
+          debug: result.debug
+        });
+        console.log('✅ Full result object keys:', Object.keys(result));
+      } catch (parseError) {
+        console.error('❌ Failed to parse JSON response:', parseError);
+        throw new Error('Server returned invalid JSON response');
+      }
+      
       return result;
     },
     onSuccess: (data) => {
@@ -187,24 +263,43 @@ export default function Profile({ onBack }: ProfileProps) {
   };
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    console.log('📸 Frontend: File input changed');
+    console.log('🎬 ==========================================');
+    console.log('🎬 FRONTEND: FILE INPUT CHANGE EVENT');
+    console.log('🎬 ==========================================');
+    console.log('🎬 Event timestamp:', new Date().toISOString());
+    console.log('🎬 Event target:', event.target);
+    console.log('🎬 Files length:', event.target.files?.length);
+    console.log('🎬 FileList object:', event.target.files);
+    
     const file = event.target.files?.[0];
     if (!file) {
-      console.log('📸 Frontend: No file selected');
+      console.log('❌ No file selected from input');
+      console.log('❌ files array:', event.target.files);
+      console.log('❌ files[0]:', event.target.files?.[0]);
       return;
     }
 
-    console.log('📸 Frontend: File selected:', {
+    console.log('✅ File successfully selected from input');
+    console.log('✅ File object:', file);
+    console.log('✅ File details:', {
       name: file.name,
       type: file.type,
       size: file.size,
-      lastModified: file.lastModified
+      lastModified: file.lastModified,
+      lastModifiedDate: new Date(file.lastModified).toISOString(),
+      webkitRelativePath: (file as any).webkitRelativePath || 'N/A'
     });
 
+    console.log('🔍 Starting file validation...');
+    
     // Validate file type
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    console.log('🔍 File type:', file.type);
+    console.log('🔍 Allowed types:', allowedTypes);
+    console.log('🔍 Type check result:', allowedTypes.includes(file.type));
+    
     if (!allowedTypes.includes(file.type)) {
-      console.log('📸 Frontend: Invalid file type:', file.type);
+      console.log('❌ Invalid file type detected:', file.type);
       toast({
         title: "Invalid File Type",
         description: "Please select a JPEG, PNG, GIF, or WebP image.",
@@ -212,11 +307,16 @@ export default function Profile({ onBack }: ProfileProps) {
       });
       return;
     }
+    console.log('✅ File type validation passed');
 
     // Validate file size (5MB max)
     const maxSize = 5 * 1024 * 1024; // 5MB
+    console.log('🔍 File size:', file.size, 'bytes');
+    console.log('🔍 Max size:', maxSize, 'bytes');
+    console.log('🔍 Size check result:', file.size <= maxSize);
+    
     if (file.size > maxSize) {
-      console.log('📸 Frontend: File too large:', file.size);
+      console.log('❌ File too large:', file.size, 'bytes (max:', maxSize, ')');
       toast({
         title: "File Too Large",
         description: "Please select an image smaller than 5MB.",
@@ -224,20 +324,36 @@ export default function Profile({ onBack }: ProfileProps) {
       });
       return;
     }
+    console.log('✅ File size validation passed');
 
-    console.log('📸 Frontend: File validation passed, starting upload');
+    console.log('🚀 All validations passed, initiating upload process');
+    console.log('🚀 Setting upload state to true...');
     setIsUploadingPhoto(true);
+    
     try {
-      await uploadPhotoMutation.mutateAsync(file);
-      console.log('📸 Frontend: Upload completed successfully');
+      console.log('🚀 Calling uploadPhotoMutation.mutateAsync...');
+      const result = await uploadPhotoMutation.mutateAsync(file);
+      console.log('✅ Upload completed successfully:', result);
     } catch (error) {
-      console.error('📸 Frontend: Upload failed:', error);
+      console.error('❌ =====================================');
+      console.error('❌ UPLOAD PROCESS FAILED');
+      console.error('❌ =====================================');
+      console.error('❌ Error object:', error);
+      console.error('❌ Error message:', error instanceof Error ? error.message : String(error));
+      console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack trace');
     } finally {
+      console.log('🔄 Cleanup: Setting upload state to false');
       setIsUploadingPhoto(false);
+      
       // Reset file input
       if (fileInputRef.current) {
+        console.log('🔄 Cleanup: Clearing file input value');
         fileInputRef.current.value = '';
+      } else {
+        console.log('❌ Cleanup: File input ref is null');
       }
+      
+      console.log('✅ Cleanup completed');
     }
   };
 
@@ -325,30 +441,87 @@ export default function Profile({ onBack }: ProfileProps) {
       <div className="gradient-bg px-6 py-8 pb-16">
         <div className="text-center">
           <div className="relative w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
-            {(user as any)?.profileImageUrl ? (
-              <img 
-                src={(user as any).profileImageUrl} 
-                alt="Profile" 
-                className="w-full h-full rounded-full object-cover"
-                data-testid="img-profile-avatar"
-              />
-            ) : (
-              <i className="fas fa-user text-3xl text-white"></i>
-            )}
+            {(() => {
+              const profileImageUrl = (user as any)?.profileImageUrl;
+              const firstName = (user as any)?.firstName || '';
+              const lastName = (user as any)?.lastName || '';
+              
+              // Generate initials for avatar
+              const getInitials = () => {
+                const firstInitial = firstName.charAt(0).toUpperCase();
+                const lastInitial = lastName.charAt(0).toUpperCase();
+                return firstInitial + lastInitial || firstName.charAt(0).toUpperCase() || 'U';
+              };
+              
+              // Generate a consistent color based on user name
+              const getAvatarColor = () => {
+                const name = firstName + lastName;
+                const colors = [
+                  'bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-pink-500', 
+                  'bg-indigo-500', 'bg-yellow-500', 'bg-red-500', 'bg-teal-500'
+                ];
+                const index = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length;
+                return colors[index];
+              };
+              
+              // For Google users, show a nice initials avatar since Google images can't be loaded cross-origin
+              const isGooglePhoto = profileImageUrl && profileImageUrl.includes('googleusercontent.com');
+              
+              if (isGooglePhoto || !profileImageUrl) {
+                // Show initials avatar for Google users or users without profile images
+                return (
+                  <div className={`w-full h-full rounded-full flex items-center justify-center text-white font-semibold text-lg ${getAvatarColor()}`}>
+                    {getInitials()}
+                  </div>
+                );
+              } else {
+                // For custom uploaded images (email users), try to load the image
+                return (
+                  <img 
+                    src={profileImageUrl} 
+                    alt="Profile" 
+                    className="w-full h-full rounded-full object-cover"
+                    data-testid="img-profile-avatar"
+                    onError={() => {
+                      // If custom image fails, fall back to initials
+                      const target = event?.target as HTMLImageElement;
+                      if (target) {
+                        target.style.display = 'none';
+                        const parent = target.parentElement;
+                        if (parent) {
+                          parent.innerHTML = `<div class="w-full h-full rounded-full flex items-center justify-center text-white font-semibold text-lg ${getAvatarColor()}">${getInitials()}</div>`;
+                        }
+                      }
+                    }}
+                  />
+                );
+              }
+            })()}
             
-            {/* Photo Upload Button */}
-            <button
-              onClick={handlePhotoUpload}
-              disabled={isUploadingPhoto}
-              className="absolute -bottom-1 -right-1 w-8 h-8 bg-primary rounded-full flex items-center justify-center shadow-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
-              data-testid="button-upload-photo"
-            >
-              {isUploadingPhoto ? (
-                <i className="fas fa-spinner fa-spin text-white text-sm"></i>
-              ) : (
-                <i className="fas fa-camera text-white text-sm"></i>
-              )}
-            </button>
+            {/* Photo Upload Button - only show for users without Google profile photos */}
+            {(() => {
+              const profileImageUrl = (user as any)?.profileImageUrl;
+              const isGooglePhoto = profileImageUrl && profileImageUrl.includes('googleusercontent.com');
+              
+              // Only show upload button for users without Google photos (i.e., email-only registrations)
+              if (!isGooglePhoto) {
+                return (
+                  <button
+                    onClick={handlePhotoUpload}
+                    disabled={isUploadingPhoto}
+                    className="absolute -bottom-1 -right-1 w-8 h-8 bg-primary rounded-full flex items-center justify-center shadow-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
+                    data-testid="button-upload-photo"
+                  >
+                    {isUploadingPhoto ? (
+                      <i className="fas fa-spinner fa-spin text-white text-sm"></i>
+                    ) : (
+                      <i className="fas fa-camera text-white text-sm"></i>
+                    )}
+                  </button>
+                );
+              }
+              return null;
+            })()}
           </div>
           
           {/* Hidden file input */}

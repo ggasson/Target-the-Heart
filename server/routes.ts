@@ -16,11 +16,34 @@ const upload = multer({
     fileSize: 5 * 1024 * 1024, // 5MB limit
   },
   fileFilter: (req, file, cb) => {
-    console.log('📸 Multer fileFilter called:', file);
+    console.log('🔧 ==========================================');
+    console.log('🔧 MULTER FILE FILTER CALLED');
+    console.log('🔧 ==========================================');
+    console.log('🔧 File filter timestamp:', new Date().toISOString());
+    console.log('🔧 Request URL:', req.url);
+    console.log('🔧 Request method:', req.method);
+    console.log('🔧 File object:', {
+      fieldname: file.fieldname,
+      originalname: file.originalname,
+      encoding: file.encoding,
+      mimetype: file.mimetype,
+      size: (file as any).size || 'size not available yet',
+      destination: (file as any).destination,
+      filename: (file as any).filename,
+      path: (file as any).path,
+      buffer: (file as any).buffer ? 'Buffer present' : 'No buffer'
+    });
+    
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    console.log('🔧 Checking file type:', file.mimetype);
+    console.log('🔧 Allowed types:', allowedTypes);
+    console.log('🔧 Type check result:', allowedTypes.includes(file.mimetype));
+    
     if (allowedTypes.includes(file.mimetype)) {
+      console.log('✅ File type accepted by filter');
       cb(null, true);
     } else {
+      console.log('❌ File type rejected by filter:', file.mimetype);
       cb(new Error('Invalid file type') as any, false);
     }
   }
@@ -107,68 +130,192 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Upload profile image
   app.post('/api/users/me/photo', (req: any, res: any, next: any) => {
-    console.log('📸 Photo upload route hit');
+    console.log('🚀 ===========================================');
+    console.log('📸 PHOTO UPLOAD REQUEST INITIATED');
+    console.log('🚀 ===========================================');
+    console.log('📸 Timestamp:', new Date().toISOString());
+    console.log('📸 Request method:', req.method);
+    console.log('📸 Request URL:', req.url);
+    console.log('📸 Request headers:', JSON.stringify(req.headers, null, 2));
     console.log('📸 Content-Type:', req.headers['content-type']);
-    console.log('📸 Body:', req.body);
+    console.log('📸 Content-Length:', req.headers['content-length']);
+    console.log('📸 Authorization header present:', !!req.headers.authorization);
+    console.log('📸 Body keys:', Object.keys(req.body || {}));
+    console.log('📸 Body content:', req.body);
+    console.log('📸 Files present:', !!req.files);
+    console.log('📸 File present:', !!req.file);
     
     isAuthenticated(req, res, (authErr: any) => {
+      console.log('🔐 ===========================================');
+      console.log('🔐 AUTHENTICATION CHECK');
+      console.log('🔐 ===========================================');
+      
       if (authErr) {
-        console.log('❌ Auth failed:', authErr);
+        console.log('❌ Auth failed with error:', authErr);
+        console.log('❌ Auth error type:', typeof authErr);
+        console.log('❌ Auth error message:', authErr.message);
+        console.log('❌ Auth error stack:', authErr.stack);
         return next(authErr);
       }
       
-      console.log('✅ Auth passed, processing upload');
+      console.log('✅ Authentication successful');
+      console.log('✅ User object present:', !!req.user);
+      console.log('✅ User claims present:', !!req.user?.claims);
+      console.log('✅ User ID:', req.user?.claims?.sub);
+      console.log('✅ User email:', req.user?.claims?.email);
+      
+      console.log('📁 ===========================================');
+      console.log('📁 MULTER FILE UPLOAD PROCESSING');
+      console.log('📁 ===========================================');
+      console.log('📁 About to call multer upload.single("photo")');
+      
       upload.single('photo')(req, res, (uploadErr: any) => {
+        console.log('📁 Multer middleware callback executed');
+        
         if (uploadErr) {
-          console.error('❌ Multer error:', uploadErr);
+          console.error('❌ Multer error occurred:', uploadErr);
+          console.error('❌ Multer error type:', typeof uploadErr);
+          console.error('❌ Multer error message:', uploadErr.message);
+          console.error('❌ Multer error code:', uploadErr.code);
+          console.error('❌ Multer error stack:', uploadErr.stack);
           return res.status(400).json({ message: uploadErr.message });
         }
         
-        console.log('📸 Upload middleware completed');
-        console.log('📸 Request file after multer:', req.file);
+        console.log('✅ Multer processing completed successfully');
+        console.log('📁 Request file after multer processing:', {
+          present: !!req.file,
+          fieldname: req.file?.fieldname,
+          originalname: req.file?.originalname,
+          encoding: req.file?.encoding,
+          mimetype: req.file?.mimetype,
+          size: req.file?.size,
+          bufferLength: req.file?.buffer?.length
+        });
+        
+        // Log raw request data for debugging
+        console.log('📁 Raw request data check:');
+        console.log('📁 req.body:', req.body);
+        console.log('📁 req.files:', req.files);
+        console.log('📁 req.file exists:', !!req.file);
         
         // Main handler
         (async () => {
           try {
-            console.log('📸 Photo upload endpoint handler called');
+            console.log('🎯 ===========================================');
+            console.log('🎯 MAIN UPLOAD HANDLER EXECUTION');
+            console.log('🎯 ===========================================');
+            
             const userId = req.user.claims.sub;
-            console.log('📸 User ID:', userId);
+            console.log('🎯 Extracted user ID:', userId);
             
             if (!req.file) {
-              console.log('❌ No file provided after multer');
-              return res.status(400).json({ message: "No image file provided" });
+              console.log('❌ CRITICAL: No file found after multer processing');
+              console.log('❌ req.file is:', req.file);
+              console.log('❌ typeof req.file:', typeof req.file);
+              console.log('❌ This suggests multer didn\'t process the file correctly');
+              return res.status(400).json({ 
+                message: "No image file provided",
+                debug: {
+                  filePresent: !!req.file,
+                  bodyKeys: Object.keys(req.body || {}),
+                  headers: req.headers['content-type']
+                }
+              });
             }
 
-      // Validate file type
-      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-      if (!allowedTypes.includes(req.file.mimetype)) {
-        return res.status(400).json({ message: "Invalid file type. Only JPEG, PNG, GIF, and WebP images are allowed." });
-      }
+            console.log('✅ File validation starting');
+            console.log('✅ File details:', {
+              fieldname: req.file.fieldname,
+              originalname: req.file.originalname,
+              encoding: req.file.encoding,
+              mimetype: req.file.mimetype,
+              size: req.file.size,
+              bufferPresent: !!req.file.buffer,
+              bufferLength: req.file.buffer?.length
+            });
 
-      // Validate file size (5MB max)
-      const maxSize = 5 * 1024 * 1024; // 5MB
-      if (req.file.size > maxSize) {
-        return res.status(400).json({ message: "File too large. Maximum size is 5MB." });
-      }
+            // Validate file type
+            const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+            console.log('🔍 Checking file type:', req.file.mimetype);
+            console.log('🔍 Allowed types:', allowedTypes);
+            
+            if (!allowedTypes.includes(req.file.mimetype)) {
+              console.log('❌ Invalid file type detected:', req.file.mimetype);
+              return res.status(400).json({ message: "Invalid file type. Only JPEG, PNG, GIF, and WebP images are allowed." });
+            }
+            console.log('✅ File type validation passed');
 
-      // For now, we'll store the image data as base64 in the database
-      // In production, you'd want to use a service like AWS S3, Cloudinary, or similar
-      const base64Image = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
-      
-      // Update user profile with new image
-      console.log('📸 Updating user profile with image');
-      await storage.updateUserProfile(userId, { profileImageUrl: base64Image });
-      console.log('📸 Profile updated successfully');
-      
+            // Validate file size (5MB max)
+            const maxSize = 5 * 1024 * 1024; // 5MB
+            console.log('🔍 Checking file size:', req.file.size, 'bytes (max:', maxSize, 'bytes)');
+            
+            if (req.file.size > maxSize) {
+              console.log('❌ File too large:', req.file.size, 'bytes');
+              return res.status(400).json({ message: "File too large. Maximum size is 5MB." });
+            }
+            console.log('✅ File size validation passed');
+
+            // Convert to base64
+            console.log('🔄 Converting file buffer to base64...');
+            const base64Image = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+            const base64Length = base64Image.length;
+            console.log('✅ Base64 conversion completed, length:', base64Length, 'characters');
+            console.log('🔍 Base64 preview (first 100 chars):', base64Image.substring(0, 100) + '...');
+            
+            // Update user profile with new image
+            console.log('💾 ===========================================');
+            console.log('💾 DATABASE UPDATE OPERATION');
+            console.log('💾 ===========================================');
+            console.log('💾 Calling storage.updateUserProfile with userId:', userId);
+            console.log('💾 Profile data keys:', Object.keys({ profileImageUrl: base64Image }));
+            
+            await storage.updateUserProfile(userId, { profileImageUrl: base64Image });
+            console.log('✅ Database update completed successfully');
+            
             const response = { 
               message: "Profile photo updated successfully",
-              imageUrl: base64Image 
+              imageUrl: base64Image,
+              debug: {
+                userId: userId,
+                fileSize: req.file.size,
+                mimeType: req.file.mimetype,
+                base64Length: base64Length,
+                timestamp: new Date().toISOString()
+              }
             };
-            console.log('📸 Sending response:', response);
+            
+            console.log('🎉 ===========================================');
+            console.log('🎉 SUCCESS - SENDING RESPONSE');
+            console.log('🎉 ===========================================');
+            console.log('🎉 Response keys:', Object.keys(response));
+            console.log('🎉 Response message:', response.message);
+            
             res.json(response);
+            
           } catch (error: any) {
-            console.error("Error uploading profile photo:", error);
-            res.status(500).json({ message: "Failed to upload profile photo" });
+            console.log('💥 ===========================================');
+            console.log('💥 CRITICAL ERROR IN UPLOAD HANDLER');
+            console.log('💥 ===========================================');
+            console.error("💥 Error details:", {
+              message: error.message,
+              name: error.name,
+              stack: error.stack,
+              code: error.code,
+              errno: error.errno,
+              syscall: error.syscall,
+              address: error.address,
+              port: error.port
+            });
+            console.error("💥 Full error object:", error);
+            
+            res.status(500).json({ 
+              message: "Failed to upload profile photo",
+              debug: {
+                error: error.message,
+                type: error.name,
+                timestamp: new Date().toISOString()
+              }
+            });
           }
         })();
       });

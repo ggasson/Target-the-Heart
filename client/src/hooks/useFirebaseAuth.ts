@@ -10,6 +10,7 @@ interface FirebaseUser {
   firstName: string;
   lastName: string;
   avatar?: string;
+  profileImageUrl?: string;
   birthday?: string;
 }
 
@@ -84,19 +85,19 @@ export function useFirebaseAuth() {
     return null;
   };
 
-         // Function to refresh user data from API
-         const refreshUserData = async () => {
-           if (auth.currentUser) {
-             try {
-               const response = await apiRequest('GET', '/api/auth/user');
-               const userData = await response.json() as unknown as FirebaseUser;
-               setUser(userData);
-               console.log('👤 User data refreshed:', userData.email);
-             } catch (error) {
-               console.error('❌ Error refreshing user data:', error);
-             }
-           }
-         };
+        // Function to refresh user data from API
+        const refreshUserData = async () => {
+          if (auth.currentUser) {
+            try {
+              const response = await apiRequest('GET', '/api/auth/user');
+              const userData = await response.json() as unknown as FirebaseUser;
+              setUser(userData);
+              console.log('👤 User data refreshed:', userData.email);
+            } catch (error) {
+              console.error('❌ Error refreshing user data:', error);
+            }
+          }
+        };
 
   return { user, loading, token, getToken, refreshUserData };
 }

@@ -43,6 +43,11 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
 
     const user = data.users[0];
     console.log('✅ Firebase user authenticated:', user.email);
+    console.log('🖼️ Firebase user data keys:', Object.keys(user));
+    console.log('🖼️ Firebase user photoUrl:', user.photoUrl);
+    console.log('🖼️ Firebase user picture:', user.picture);
+    console.log('🖼️ Firebase user avatar:', user.avatar);
+    console.log('🖼️ Full Firebase user object:', JSON.stringify(user, null, 2));
     
     // Create user object similar to Replit format for compatibility
     (req as any).user = {
