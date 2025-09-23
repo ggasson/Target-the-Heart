@@ -47,7 +47,7 @@ interface PaginatedResponse<T> {
  * @returns {JSX.Element} Admin dashboard UI
  */
 export default function AdminDashboard() {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("dashboard");
   const [searchTerm, setSearchTerm] = useState("");
@@ -55,15 +55,25 @@ export default function AdminDashboard() {
   // Check if user is admin
   const isAdmin = user?.email === "garygasson@gmail.com";
 
+  // Debug logging
+  console.log('🔍 Admin Dashboard Debug:', { 
+    user: user?.email, 
+    isAdmin, 
+    isLoading,
+    userObject: user 
+  });
+
   useEffect(() => {
-    if (!isAdmin) {
+    // Only show access denied if we're not loading and user is definitely not admin
+    if (!isLoading && user && !isAdmin) {
+      console.log('❌ Access denied for user:', user.email);
       toast({
         title: "Access Denied",
         description: "You don't have admin privileges",
         variant: "destructive"
       });
     }
-  }, [isAdmin, toast]);
+  }, [isAdmin, isLoading, user, toast]);
 
   // Fetch dashboard stats
   const { data: dashboardStats, isLoading: isLoadingStats } = useQuery<AdminDashboardStats>({
@@ -71,7 +81,21 @@ export default function AdminDashboard() {
     enabled: isAdmin,
   });
 
-  if (!isAdmin) {
+  // Show loading while auth is being checked
+  if (isLoading) {
+    return (
+      <div className="max-w-md mx-auto bg-card shadow-lg min-h-screen">
+        <div className="px-6 py-12 text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <h1 className="text-xl font-semibold text-foreground mb-2">Loading...</h1>
+          <p className="text-muted-foreground">Checking admin privileges...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show access denied only if we're not loading and user is definitely not admin
+  if (!isLoading && user && !isAdmin) {
     return (
       <div className="max-w-md mx-auto bg-card shadow-lg min-h-screen">
         <div className="px-6 py-12 text-center">
@@ -80,11 +104,33 @@ export default function AdminDashboard() {
           </div>
           <h1 className="text-xl font-semibold text-foreground mb-2">Access Denied</h1>
           <p className="text-muted-foreground">You don't have administrative privileges.</p>
+          <p className="text-sm text-muted-foreground mt-2">Email: {user.email}</p>
           <Button
             onClick={() => window.history.back()}
             className="mt-4"
           >
             Go Back
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Show access denied if no user (not authenticated)
+  if (!isLoading && !user) {
+    return (
+      <div className="max-w-md mx-auto bg-card shadow-lg min-h-screen">
+        <div className="px-6 py-12 text-center">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <i className="fas fa-shield-alt text-red-600 text-2xl"></i>
+          </div>
+          <h1 className="text-xl font-semibold text-foreground mb-2">Not Authenticated</h1>
+          <p className="text-muted-foreground">Please log in to access the admin dashboard.</p>
+          <Button
+            onClick={() => window.location.href = "/"}
+            className="mt-4"
+          >
+            Go to Login
           </Button>
         </div>
       </div>
