@@ -222,18 +222,29 @@ END:VCALENDAR`;
         {/* Meeting Info Card */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span data-testid="text-meeting-title">{meeting.title}</span>
-              <div className="flex items-center space-x-2">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg" data-testid="text-meeting-title">
+                  {meeting.title}
+                </CardTitle>
+                <Badge variant={meeting.status === "scheduled" ? "default" : "secondary"}>
+                  {meeting.status}
+                </Badge>
+              </div>
+              
+              {/* Action Buttons */}
+              <div className="flex flex-wrap gap-2">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={exportToCalendar}
+                  className="flex-1 min-w-0 sm:flex-none"
                   data-testid="button-add-to-calendar"
                 >
                   <i className="fas fa-calendar-plus mr-2"></i>
-                  Add to Calendar
+                  <span className="truncate">Add to Calendar</span>
                 </Button>
+                
                 {canDeleteMeeting && meeting.status === "scheduled" && (
                   <>
                     {!showDeleteConfirm ? (
@@ -241,19 +252,20 @@ END:VCALENDAR`;
                         variant="outline"
                         size="sm"
                         onClick={handleDeleteMeeting}
-                        className="text-red-600 border-red-300 hover:bg-red-50"
+                        className="flex-1 min-w-0 sm:flex-none text-red-600 border-red-300 hover:bg-red-50 dark:hover:bg-red-950"
                         data-testid="button-cancel-meeting"
                       >
                         <i className="fas fa-times mr-2"></i>
-                        Cancel Meeting
+                        <span className="truncate">Cancel Meeting</span>
                       </Button>
                     ) : (
-                      <div className="flex items-center space-x-1">
+                      <div className="flex gap-2 flex-1 sm:flex-none">
                         <Button
                           variant="destructive"
                           size="sm"
                           onClick={handleDeleteMeeting}
                           disabled={deleteMeetingMutation.isPending}
+                          className="flex-1"
                           data-testid="button-confirm-cancel"
                         >
                           {deleteMeetingMutation.isPending ? (
@@ -268,6 +280,7 @@ END:VCALENDAR`;
                           size="sm"
                           onClick={handleCancelDelete}
                           disabled={deleteMeetingMutation.isPending}
+                          className="flex-1"
                           data-testid="button-cancel-delete"
                         >
                           <i className="fas fa-times mr-2"></i>
@@ -277,11 +290,8 @@ END:VCALENDAR`;
                     )}
                   </>
                 )}
-                <Badge variant={meeting.status === "scheduled" ? "default" : "secondary"}>
-                  {meeting.status}
-                </Badge>
               </div>
-            </CardTitle>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
             {meeting.description && (
@@ -372,38 +382,56 @@ END:VCALENDAR`;
               />
             </div>
 
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 gap-3">
               <Button
                 onClick={() => handleRsvp("attending")}
                 disabled={rsvpMutation.isPending}
                 variant={userRsvp?.status === "attending" ? "default" : "outline"}
-                className="flex flex-col items-center p-4 h-auto"
+                className={`flex flex-col items-center justify-center p-4 h-20 min-h-[80px] transition-all ${
+                  userRsvp?.status === "attending" 
+                    ? "bg-green-600 hover:bg-green-700 text-white border-green-600" 
+                    : "hover:bg-green-50 hover:border-green-300 dark:hover:bg-green-900/20"
+                }`}
                 data-testid="button-rsvp-attending"
               >
-                <i className="fas fa-check-circle text-green-500 mb-1"></i>
-                <span className="text-xs">Attending</span>
+                <i className={`fas fa-check-circle text-lg mb-2 ${
+                  userRsvp?.status === "attending" ? "text-white" : "text-green-500"
+                }`}></i>
+                <span className="text-xs font-medium">Attending</span>
               </Button>
               
               <Button
                 onClick={() => handleRsvp("maybe")}
                 disabled={rsvpMutation.isPending}
                 variant={userRsvp?.status === "maybe" ? "default" : "outline"}
-                className="flex flex-col items-center p-4 h-auto"
+                className={`flex flex-col items-center justify-center p-4 h-20 min-h-[80px] transition-all ${
+                  userRsvp?.status === "maybe" 
+                    ? "bg-yellow-600 hover:bg-yellow-700 text-white border-yellow-600" 
+                    : "hover:bg-yellow-50 hover:border-yellow-300 dark:hover:bg-yellow-900/20"
+                }`}
                 data-testid="button-rsvp-maybe"
               >
-                <i className="fas fa-question-circle text-yellow-500 mb-1"></i>
-                <span className="text-xs">Maybe</span>
+                <i className={`fas fa-question-circle text-lg mb-2 ${
+                  userRsvp?.status === "maybe" ? "text-white" : "text-yellow-500"
+                }`}></i>
+                <span className="text-xs font-medium">Maybe</span>
               </Button>
               
               <Button
                 onClick={() => handleRsvp("not_attending")}
                 disabled={rsvpMutation.isPending}
                 variant={userRsvp?.status === "not_attending" ? "default" : "outline"}
-                className="flex flex-col items-center p-4 h-auto"
+                className={`flex flex-col items-center justify-center p-4 h-20 min-h-[80px] transition-all ${
+                  userRsvp?.status === "not_attending" 
+                    ? "bg-red-600 hover:bg-red-700 text-white border-red-600" 
+                    : "hover:bg-red-50 hover:border-red-300 dark:hover:bg-red-900/20"
+                }`}
                 data-testid="button-rsvp-not-attending"
               >
-                <i className="fas fa-times-circle text-red-500 mb-1"></i>
-                <span className="text-xs">Can't Attend</span>
+                <i className={`fas fa-times-circle text-lg mb-2 ${
+                  userRsvp?.status === "not_attending" ? "text-white" : "text-red-500"
+                }`}></i>
+                <span className="text-xs font-medium">Can't Attend</span>
               </Button>
             </div>
           </CardContent>
