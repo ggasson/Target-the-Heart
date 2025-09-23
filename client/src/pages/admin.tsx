@@ -7,7 +7,7 @@
  */
 
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +27,59 @@ interface AdminDashboardStats {
   recent: {
     users: any[];
     groups: any[];
+  };
+}
+
+interface AdminUsersResponse {
+  users: any[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
+  };
+}
+
+interface AdminGroupsResponse {
+  groups: any[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
+  };
+}
+
+interface AdminMeetingsResponse {
+  meetings: any[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
+  };
+}
+
+interface AdminPrayersResponse {
+  prayers: any[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
+  };
+}
+
+interface AdminHealthResponse {
+  status: string;
+  database: {
+    connected: boolean;
+    responseTime: number;
+  };
+  uptime: number;
+  memory: {
+    used: number;
+    total: number;
   };
 }
 
@@ -360,8 +413,9 @@ function AdminUsersSection({ searchTerm, setSearchTerm }: {
 }) {
   const [page, setPage] = useState(1);
   const [selectedUser, setSelectedUser] = useState<any>(null);
+  const { toast } = useToast();
 
-  const { data: usersData, isLoading } = useQuery({
+  const { data: usersData, isLoading } = useQuery<AdminUsersResponse>({
     queryKey: ["/api/admin/users", page, searchTerm],
     queryFn: async () => {
       const params = new URLSearchParams({
@@ -370,9 +424,32 @@ function AdminUsersSection({ searchTerm, setSearchTerm }: {
         ...(searchTerm && { search: searchTerm })
       });
       const response = await apiRequest("GET", `/api/admin/users?${params}`);
-      return response;
+      return response as unknown as AdminUsersResponse;
     },
   });
+
+  const deleteUserMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      return apiRequest("DELETE", `/api/admin/users/${userId}`);
+    },
+    onSuccess: () => {
+      toast({ title: "User deleted successfully" });
+      // Refetch users data
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error deleting user", 
+        description: error.message,
+        variant: "destructive" 
+      });
+    }
+  });
+
+  const handleDeleteUser = (userId: string, userName: string) => {
+    if (confirm(`Are you sure you want to delete the user "${userName}"? This action cannot be undone.`)) {
+      deleteUserMutation.mutate(userId);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -437,7 +514,13 @@ function AdminUsersSection({ searchTerm, setSearchTerm }: {
                           <Button size="sm" variant="outline">
                             <i className="fas fa-edit"></i>
                           </Button>
-                          <Button size="sm" variant="outline" className="text-red-600 hover:bg-red-50">
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="text-red-600 hover:bg-red-50"
+                            onClick={() => handleDeleteUser(user.id, `${user.firstName} ${user.lastName}`)}
+                            disabled={deleteUserMutation.isPending}
+                          >
                             <i className="fas fa-trash"></i>
                           </Button>
                         </div>
@@ -494,11 +577,155 @@ function AdminGroupsSection({ searchTerm, setSearchTerm }: {
   searchTerm: string;
   setSearchTerm: (term: string) => void;
 }) {
+  const [page, setPage] = useState(1);
+  const [selectedGroup, setSelectedGroup] = useState<any>(null);
+  const { toast } = useToast();
+
+  const { data: groupsData, isLoading } = useQuery<AdminGroupsResponse>({
+    queryKey: ["/api/admin/groups", page, searchTerm],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: "20",
+        ...(searchTerm && { search: searchTerm })
+      });
+      const response = await apiRequest("GET", `/api/admin/groups?${params}`);
+      return response as unknown as AdminGroupsResponse;
+    },
+  });
+
+  const deleteGroupMutation = useMutation({
+    mutationFn: async (groupId: string) => {
+      return apiRequest("DELETE", `/api/admin/groups/${groupId}`);
+    },
+    onSuccess: () => {
+      toast({ title: "Group deleted successfully" });
+      // Refetch groups data
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error deleting group", 
+        description: error.message,
+        variant: "destructive" 
+      });
+    }
+  });
+
+  const handleDeleteGroup = (groupId: string, groupName: string) => {
+    if (confirm(`Are you sure you want to delete the group "${groupName}"? This action cannot be undone.`)) {
+      deleteGroupMutation.mutate(groupId);
+    }
+  };
+
   return (
-    <div className="text-center py-8">
-      <i className="fas fa-users-cog text-4xl text-muted-foreground mb-4"></i>
-      <h3 className="text-lg font-medium mb-2">Groups Management</h3>
-      <p className="text-muted-foreground">Groups management interface coming soon...</p>
+    <div className="space-y-4">
+      <div className="flex items-center space-x-4">
+        <Input
+          placeholder="Search groups..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="flex-1"
+        />
+        <Button variant="outline">
+          <i className="fas fa-download mr-2"></i>
+          Export
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <div className="text-center py-8">
+          <i className="fas fa-spinner fa-spin text-2xl text-muted-foreground"></i>
+          <p className="text-muted-foreground mt-2">Loading groups...</p>
+        </div>
+      ) : (
+        <Card>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="border-b">
+                  <tr className="text-left">
+                    <th className="p-4 font-medium">Group</th>
+                    <th className="p-4 font-medium">Description</th>
+                    <th className="p-4 font-medium">Members</th>
+                    <th className="p-4 font-medium">Created</th>
+                    <th className="p-4 font-medium">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {groupsData?.groups?.map((group: any) => (
+                    <tr key={group.id} className="border-b hover:bg-muted/50">
+                      <td className="p-4">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                            <i className="fas fa-users text-green-600 text-sm"></i>
+                          </div>
+                          <div>
+                            <p className="font-medium">{group.name}</p>
+                            <p className="text-xs text-muted-foreground">ID: {group.id.slice(0, 8)}...</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-4 text-sm max-w-xs">
+                        <p className="truncate">{group.description || "No description"}</p>
+                      </td>
+                      <td className="p-4">
+                        <Badge variant="outline">{group.memberCount || 0} members</Badge>
+                      </td>
+                      <td className="p-4 text-sm">{new Date(group.createdAt).toLocaleDateString()}</td>
+                      <td className="p-4">
+                        <div className="flex space-x-2">
+                          <Button size="sm" variant="outline" onClick={() => setSelectedGroup(group)}>
+                            <i className="fas fa-eye"></i>
+                          </Button>
+                          <Button size="sm" variant="outline">
+                            <i className="fas fa-edit"></i>
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="text-red-600 hover:bg-red-50"
+                            onClick={() => handleDeleteGroup(group.id, group.name)}
+                            disabled={deleteGroupMutation.isPending}
+                          >
+                            <i className="fas fa-trash"></i>
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Pagination */}
+      {groupsData?.pagination && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            Showing {((page - 1) * 20) + 1} to {Math.min(page * 20, groupsData.pagination.total)} of {groupsData.pagination.total} groups
+          </p>
+          <div className="flex space-x-2">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={page <= 1}
+              onClick={() => setPage(page - 1)}
+            >
+              Previous
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={page >= groupsData.pagination.pages}
+              onClick={() => setPage(page + 1)}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -516,11 +743,160 @@ function AdminMeetingsSection({ searchTerm, setSearchTerm }: {
   searchTerm: string;
   setSearchTerm: (term: string) => void;
 }) {
+  const [page, setPage] = useState(1);
+  const [selectedMeeting, setSelectedMeeting] = useState<any>(null);
+  const { toast } = useToast();
+
+  const { data: meetingsData, isLoading } = useQuery<AdminMeetingsResponse>({
+    queryKey: ["/api/admin/meetings", page, searchTerm],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: "20",
+        ...(searchTerm && { search: searchTerm })
+      });
+      const response = await apiRequest("GET", `/api/admin/meetings?${params}`);
+      return response as unknown as AdminMeetingsResponse;
+    },
+  });
+
+  const deleteMeetingMutation = useMutation({
+    mutationFn: async (meetingId: string) => {
+      return apiRequest("DELETE", `/api/admin/meetings/${meetingId}`);
+    },
+    onSuccess: () => {
+      toast({ title: "Meeting deleted successfully" });
+      // Refetch meetings data
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error deleting meeting", 
+        description: error.message,
+        variant: "destructive" 
+      });
+    }
+  });
+
+  const handleDeleteMeeting = (meetingId: string, meetingTitle: string) => {
+    if (confirm(`Are you sure you want to delete the meeting "${meetingTitle}"? This action cannot be undone.`)) {
+      deleteMeetingMutation.mutate(meetingId);
+    }
+  };
+
   return (
-    <div className="text-center py-8">
-      <i className="fas fa-calendar text-4xl text-muted-foreground mb-4"></i>
-      <h3 className="text-lg font-medium mb-2">Meetings Management</h3>
-      <p className="text-muted-foreground">Meetings management interface coming soon...</p>
+    <div className="space-y-4">
+      <div className="flex items-center space-x-4">
+        <Input
+          placeholder="Search meetings..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="flex-1"
+        />
+        <Button variant="outline">
+          <i className="fas fa-download mr-2"></i>
+          Export
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <div className="text-center py-8">
+          <i className="fas fa-spinner fa-spin text-2xl text-muted-foreground"></i>
+          <p className="text-muted-foreground mt-2">Loading meetings...</p>
+        </div>
+      ) : (
+        <Card>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="border-b">
+                  <tr className="text-left">
+                    <th className="p-4 font-medium">Meeting</th>
+                    <th className="p-4 font-medium">Group</th>
+                    <th className="p-4 font-medium">Date & Time</th>
+                    <th className="p-4 font-medium">Location</th>
+                    <th className="p-4 font-medium">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {meetingsData?.meetings?.map((meeting: any) => (
+                    <tr key={meeting.id} className="border-b hover:bg-muted/50">
+                      <td className="p-4">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                            <i className="fas fa-calendar text-purple-600 text-sm"></i>
+                          </div>
+                          <div>
+                            <p className="font-medium">{meeting.title}</p>
+                            <p className="text-xs text-muted-foreground">ID: {meeting.id.slice(0, 8)}...</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-4 text-sm">{meeting.groupName || "No group"}</td>
+                      <td className="p-4 text-sm">
+                        <div>
+                          <p>{new Date(meeting.meetingDate).toLocaleDateString()}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {meeting.startTime} - {meeting.endTime}
+                          </p>
+                        </div>
+                      </td>
+                      <td className="p-4 text-sm max-w-xs">
+                        <p className="truncate">{meeting.location || "No location"}</p>
+                      </td>
+                      <td className="p-4">
+                        <div className="flex space-x-2">
+                          <Button size="sm" variant="outline" onClick={() => setSelectedMeeting(meeting)}>
+                            <i className="fas fa-eye"></i>
+                          </Button>
+                          <Button size="sm" variant="outline">
+                            <i className="fas fa-edit"></i>
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="text-red-600 hover:bg-red-50"
+                            onClick={() => handleDeleteMeeting(meeting.id, meeting.title)}
+                            disabled={deleteMeetingMutation.isPending}
+                          >
+                            <i className="fas fa-trash"></i>
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Pagination */}
+      {meetingsData?.pagination && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            Showing {((page - 1) * 20) + 1} to {Math.min(page * 20, meetingsData.pagination.total)} of {meetingsData.pagination.total} meetings
+          </p>
+          <div className="flex space-x-2">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={page <= 1}
+              onClick={() => setPage(page - 1)}
+            >
+              Previous
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={page >= meetingsData.pagination.pages}
+              onClick={() => setPage(page + 1)}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -538,11 +914,153 @@ function AdminPrayersSection({ searchTerm, setSearchTerm }: {
   searchTerm: string;
   setSearchTerm: (term: string) => void;
 }) {
+  const [page, setPage] = useState(1);
+  const [selectedPrayer, setSelectedPrayer] = useState<any>(null);
+  const { toast } = useToast();
+
+  const { data: prayersData, isLoading } = useQuery<AdminPrayersResponse>({
+    queryKey: ["/api/admin/prayers", page, searchTerm],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: "20",
+        ...(searchTerm && { search: searchTerm })
+      });
+      const response = await apiRequest("GET", `/api/admin/prayers?${params}`);
+      return response as unknown as AdminPrayersResponse;
+    },
+  });
+
+  const deletePrayerMutation = useMutation({
+    mutationFn: async (prayerId: string) => {
+      return apiRequest("DELETE", `/api/admin/prayers/${prayerId}`);
+    },
+    onSuccess: () => {
+      toast({ title: "Prayer deleted successfully" });
+      // Refetch prayers data
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error deleting prayer", 
+        description: error.message,
+        variant: "destructive" 
+      });
+    }
+  });
+
+  const handleDeletePrayer = (prayerId: string, prayerTitle: string) => {
+    if (confirm(`Are you sure you want to delete the prayer "${prayerTitle}"? This action cannot be undone.`)) {
+      deletePrayerMutation.mutate(prayerId);
+    }
+  };
+
   return (
-    <div className="text-center py-8">
-      <i className="fas fa-hands-praying text-4xl text-muted-foreground mb-4"></i>
-      <h3 className="text-lg font-medium mb-2">Prayers Management</h3>
-      <p className="text-muted-foreground">Prayers management interface coming soon...</p>
+    <div className="space-y-4">
+      <div className="flex items-center space-x-4">
+        <Input
+          placeholder="Search prayers..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="flex-1"
+        />
+        <Button variant="outline">
+          <i className="fas fa-download mr-2"></i>
+          Export
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <div className="text-center py-8">
+          <i className="fas fa-spinner fa-spin text-2xl text-muted-foreground"></i>
+          <p className="text-muted-foreground mt-2">Loading prayers...</p>
+        </div>
+      ) : (
+        <Card>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="border-b">
+                  <tr className="text-left">
+                    <th className="p-4 font-medium">Prayer</th>
+                    <th className="p-4 font-medium">Category</th>
+                    <th className="p-4 font-medium">Group</th>
+                    <th className="p-4 font-medium">Created</th>
+                    <th className="p-4 font-medium">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {prayersData?.prayers?.map((prayer: any) => (
+                    <tr key={prayer.id} className="border-b hover:bg-muted/50">
+                      <td className="p-4">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
+                            <i className="fas fa-hands-praying text-orange-600 text-sm"></i>
+                          </div>
+                          <div>
+                            <p className="font-medium">{prayer.title}</p>
+                            <p className="text-xs text-muted-foreground">ID: {prayer.id.slice(0, 8)}...</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <Badge variant="outline">{prayer.category || "General"}</Badge>
+                      </td>
+                      <td className="p-4 text-sm">{prayer.groupName || "No group"}</td>
+                      <td className="p-4 text-sm">{new Date(prayer.createdAt).toLocaleDateString()}</td>
+                      <td className="p-4">
+                        <div className="flex space-x-2">
+                          <Button size="sm" variant="outline" onClick={() => setSelectedPrayer(prayer)}>
+                            <i className="fas fa-eye"></i>
+                          </Button>
+                          <Button size="sm" variant="outline">
+                            <i className="fas fa-edit"></i>
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="text-red-600 hover:bg-red-50"
+                            onClick={() => handleDeletePrayer(prayer.id, prayer.title)}
+                            disabled={deletePrayerMutation.isPending}
+                          >
+                            <i className="fas fa-trash"></i>
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Pagination */}
+      {prayersData?.pagination && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            Showing {((page - 1) * 20) + 1} to {Math.min(page * 20, prayersData.pagination.total)} of {prayersData.pagination.total} prayers
+          </p>
+          <div className="flex space-x-2">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={page <= 1}
+              onClick={() => setPage(page - 1)}
+            >
+              Previous
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={page >= prayersData.pagination.pages}
+              onClick={() => setPage(page + 1)}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -554,8 +1072,12 @@ function AdminPrayersSection({ searchTerm, setSearchTerm }: {
  * @returns {JSX.Element} System management interface
  */
 function AdminSystemSection() {
-  const { data: healthData } = useQuery({
+  const { data: healthData } = useQuery<AdminHealthResponse>({
     queryKey: ["/api/admin/health"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/admin/health");
+      return response as unknown as AdminHealthResponse;
+    },
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
@@ -580,8 +1102,8 @@ function AdminSystemSection() {
             <div>
               <p className="text-sm text-muted-foreground">Database</p>
               <p className="font-medium flex items-center">
-                <span className={`w-2 h-2 rounded-full mr-2 ${healthData?.database === 'connected' ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                {healthData?.database || "Unknown"}
+                <span className={`w-2 h-2 rounded-full mr-2 ${healthData?.database?.connected ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                {healthData?.database?.connected ? 'Connected' : 'Disconnected'}
               </p>
             </div>
             <div>
