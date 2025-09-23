@@ -1357,10 +1357,19 @@ export class DatabaseStorage implements IStorage {
    * @returns {Promise<object>} Dashboard statistics including user, group, meeting, and prayer counts
    */
   async getAdminDashboardStats() {
+    console.log('🔍 Admin Dashboard Stats - Starting data fetch...');
+    
     const [userCount] = await this.db.select({ count: sql`count(*)` }).from(users);
     const [groupCount] = await this.db.select({ count: sql`count(*)` }).from(groups);
     const [meetingCount] = await this.db.select({ count: sql`count(*)` }).from(meetings);
     const [prayerCount] = await this.db.select({ count: sql`count(*)` }).from(prayerRequests);
+    
+    console.log('🔍 Admin Dashboard Stats - Raw counts:', {
+      userCount: userCount.count,
+      groupCount: groupCount.count,
+      meetingCount: meetingCount.count,
+      prayerCount: prayerCount.count
+    });
     
     const recentUsers = await this.db
       .select()
@@ -1374,7 +1383,14 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(groups.createdAt))
       .limit(5);
 
-    return {
+    console.log('🔍 Admin Dashboard Stats - Recent data:', {
+      recentUsersCount: recentUsers.length,
+      recentGroupsCount: recentGroups.length,
+      recentUsers: recentUsers.map(u => ({ id: u.id, email: u.email, name: `${u.firstName} ${u.lastName}` })),
+      recentGroups: recentGroups.map(g => ({ id: g.id, name: g.name }))
+    });
+
+    const result = {
       stats: {
         users: userCount.count,
         groups: groupCount.count,
@@ -1386,6 +1402,9 @@ export class DatabaseStorage implements IStorage {
         groups: recentGroups,
       }
     };
+
+    console.log('🔍 Admin Dashboard Stats - Final result:', result);
+    return result;
   }
 
   /**

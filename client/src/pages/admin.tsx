@@ -76,9 +76,18 @@ export default function AdminDashboard() {
   }, [isAdmin, isLoading, user, toast]);
 
   // Fetch dashboard stats
-  const { data: dashboardStats, isLoading: isLoadingStats } = useQuery<AdminDashboardStats>({
+  const { data: dashboardStats, isLoading: isLoadingStats, error: statsError } = useQuery<AdminDashboardStats>({
     queryKey: ["/api/admin/dashboard"],
     enabled: isAdmin,
+    retry: 1,
+  });
+
+  // Debug logging for dashboard stats
+  console.log('🔍 Admin Dashboard Stats Debug:', {
+    isLoadingStats,
+    dashboardStats,
+    statsError,
+    isAdmin
   });
 
   // Show loading while auth is being checked
