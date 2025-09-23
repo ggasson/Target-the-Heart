@@ -118,8 +118,12 @@ export default function Profile({ onBack }: ProfileProps) {
   // Photo upload mutation
   const uploadPhotoMutation = useMutation({
     mutationFn: async (file: File) => {
+      console.log('📸 Frontend: Starting photo upload', file.name, file.type, file.size);
+      
       const formData = new FormData();
       formData.append('photo', file);
+      
+      console.log('📸 Frontend: FormData created, sending to API');
       
       // Get the auth token properly
       const token = await getToken();
@@ -127,20 +131,27 @@ export default function Profile({ onBack }: ProfileProps) {
         throw new Error('Authentication required');
       }
       
+      // Use fetch directly for file uploads (FormData needs special handling)
       const response = await fetch('/api/users/me/photo', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
+          // Don't set Content-Type - let browser set it with boundary for multipart/form-data
         },
         body: formData,
       });
       
+      console.log('📸 Frontend: Response received', response.status, response.statusText);
+      
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to upload photo');
+        const errorText = await response.text();
+        console.error('📸 Frontend: Upload failed', errorText);
+        throw new Error(errorText || 'Failed to upload photo');
       }
       
-      return response.json();
+      const result = await response.json();
+      console.log('📸 Frontend: Upload successful', result);
+      return result;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
@@ -176,12 +187,24 @@ export default function Profile({ onBack }: ProfileProps) {
   };
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('📸 Frontend: File input changed');
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (!file) {
+      console.log('📸 Frontend: No file selected');
+      return;
+    }
+
+    console.log('📸 Frontend: File selected:', {
+      name: file.name,
+      type: file.type,
+      size: file.size,
+      lastModified: file.lastModified
+    });
 
     // Validate file type
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
     if (!allowedTypes.includes(file.type)) {
+      console.log('📸 Frontend: Invalid file type:', file.type);
       toast({
         title: "Invalid File Type",
         description: "Please select a JPEG, PNG, GIF, or WebP image.",
@@ -193,6 +216,7 @@ export default function Profile({ onBack }: ProfileProps) {
     // Validate file size (5MB max)
     const maxSize = 5 * 1024 * 1024; // 5MB
     if (file.size > maxSize) {
+      console.log('📸 Frontend: File too large:', file.size);
       toast({
         title: "File Too Large",
         description: "Please select an image smaller than 5MB.",
@@ -201,9 +225,13 @@ export default function Profile({ onBack }: ProfileProps) {
       return;
     }
 
+    console.log('📸 Frontend: File validation passed, starting upload');
     setIsUploadingPhoto(true);
     try {
       await uploadPhotoMutation.mutateAsync(file);
+      console.log('📸 Frontend: Upload completed successfully');
+    } catch (error) {
+      console.error('📸 Frontend: Upload failed:', error);
     } finally {
       setIsUploadingPhoto(false);
       // Reset file input

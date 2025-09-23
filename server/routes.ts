@@ -15,6 +15,15 @@ const upload = multer({
   limits: {
     fileSize: 5 * 1024 * 1024, // 5MB limit
   },
+  fileFilter: (req, file, cb) => {
+    console.log('📸 Multer fileFilter called:', file);
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type') as any, false);
+    }
+  }
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -97,13 +106,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Upload profile image
-  app.post('/api/users/me/photo', isAuthenticated, upload.single('photo'), async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      
-      if (!req.file) {
-        return res.status(400).json({ message: "No image file provided" });
+  app.post('/api/users/me/photo', (req: any, res: any, next: any) => {
+    console.log('📸 Photo upload route hit');
+    console.log('📸 Content-Type:', req.headers['content-type']);
+    console.log('📸 Body:', req.body);
+    
+    isAuthenticated(req, res, (authErr: any) => {
+      if (authErr) {
+        console.log('❌ Auth failed:', authErr);
+        return next(authErr);
       }
+      
+      console.log('✅ Auth passed, processing upload');
+      upload.single('photo')(req, res, (uploadErr: any) => {
+        if (uploadErr) {
+          console.error('❌ Multer error:', uploadErr);
+          return res.status(400).json({ message: uploadErr.message });
+        }
+        
+        console.log('📸 Upload middleware completed');
+        console.log('📸 Request file after multer:', req.file);
+        
+        // Main handler
+        (async () => {
+          try {
+            console.log('📸 Photo upload endpoint handler called');
+            const userId = req.user.claims.sub;
+            console.log('📸 User ID:', userId);
+            
+            if (!req.file) {
+              console.log('❌ No file provided after multer');
+              return res.status(400).json({ message: "No image file provided" });
+            }
 
       // Validate file type
       const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
@@ -122,16 +156,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const base64Image = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
       
       // Update user profile with new image
+      console.log('📸 Updating user profile with image');
       await storage.updateUserProfile(userId, { profileImageUrl: base64Image });
+      console.log('📸 Profile updated successfully');
       
-      res.json({ 
-        message: "Profile photo updated successfully",
-        imageUrl: base64Image 
+            const response = { 
+              message: "Profile photo updated successfully",
+              imageUrl: base64Image 
+            };
+            console.log('📸 Sending response:', response);
+            res.json(response);
+          } catch (error: any) {
+            console.error("Error uploading profile photo:", error);
+            res.status(500).json({ message: "Failed to upload profile photo" });
+          }
+        })();
       });
-    } catch (error: any) {
-      console.error("Error uploading profile photo:", error);
-      res.status(500).json({ message: "Failed to upload profile photo" });
-    }
+    });
   });
   
   // Update user profile
