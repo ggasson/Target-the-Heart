@@ -20,12 +20,11 @@ import { storage } from "./storage";
  */
 export function registerAdminRoutes(app: Express): void {
   
+  
   // Admin dashboard data - overview statistics
   app.get('/api/admin/dashboard', requireAuthenticatedAdmin, async (req, res) => {
     try {
-      console.log('🔍 Admin Dashboard API - Request received');
       const stats = await storage.getAdminDashboardStats();
-      console.log('🔍 Admin Dashboard API - Stats retrieved, sending response');
       res.json(stats);
     } catch (error) {
       console.error("Error fetching admin dashboard:", error);

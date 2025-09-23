@@ -1357,40 +1357,24 @@ export class DatabaseStorage implements IStorage {
    * @returns {Promise<object>} Dashboard statistics including user, group, meeting, and prayer counts
    */
   async getAdminDashboardStats() {
-    console.log('🔍 Admin Dashboard Stats - Starting data fetch...');
+    const [userCount] = await db.select({ count: sql`count(*)` }).from(users);
+    const [groupCount] = await db.select({ count: sql`count(*)` }).from(groups);
+    const [meetingCount] = await db.select({ count: sql`count(*)` }).from(meetings);
+    const [prayerCount] = await db.select({ count: sql`count(*)` }).from(prayerRequests);
     
-    const [userCount] = await this.db.select({ count: sql`count(*)` }).from(users);
-    const [groupCount] = await this.db.select({ count: sql`count(*)` }).from(groups);
-    const [meetingCount] = await this.db.select({ count: sql`count(*)` }).from(meetings);
-    const [prayerCount] = await this.db.select({ count: sql`count(*)` }).from(prayerRequests);
-    
-    console.log('🔍 Admin Dashboard Stats - Raw counts:', {
-      userCount: userCount.count,
-      groupCount: groupCount.count,
-      meetingCount: meetingCount.count,
-      prayerCount: prayerCount.count
-    });
-    
-    const recentUsers = await this.db
+    const recentUsers = await db
       .select()
       .from(users)
       .orderBy(desc(users.createdAt))
       .limit(5);
 
-    const recentGroups = await this.db
+    const recentGroups = await db
       .select()
       .from(groups)
       .orderBy(desc(groups.createdAt))
       .limit(5);
 
-    console.log('🔍 Admin Dashboard Stats - Recent data:', {
-      recentUsersCount: recentUsers.length,
-      recentGroupsCount: recentGroups.length,
-      recentUsers: recentUsers.map(u => ({ id: u.id, email: u.email, name: `${u.firstName} ${u.lastName}` })),
-      recentGroups: recentGroups.map(g => ({ id: g.id, name: g.name }))
-    });
-
-    const result = {
+    return {
       stats: {
         users: userCount.count,
         groups: groupCount.count,
@@ -1402,9 +1386,6 @@ export class DatabaseStorage implements IStorage {
         groups: recentGroups,
       }
     };
-
-    console.log('🔍 Admin Dashboard Stats - Final result:', result);
-    return result;
   }
 
   /**
@@ -1419,7 +1400,7 @@ export class DatabaseStorage implements IStorage {
   async getAdminUsers(page: number, limit: number, search: string) {
     const offset = (page - 1) * limit;
     
-    let query = this.db.select().from(users);
+    let query = db.select().from(users);
     
     if (search) {
       query = query.where(
@@ -1431,7 +1412,7 @@ export class DatabaseStorage implements IStorage {
 
     const [results, [totalCount]] = await Promise.all([
       query.orderBy(desc(users.createdAt)).limit(limit).offset(offset),
-      this.db.select({ count: sql`count(*)` }).from(users)
+      db.select({ count: sql`count(*)` }).from(users)
     ]);
 
     return {
@@ -1453,10 +1434,10 @@ export class DatabaseStorage implements IStorage {
    * @returns {Promise<object>} Detailed user information
    */
   async getAdminUserDetails(userId: string) {
-    const user = await this.db.select().from(users).where(eq(users.id, userId)).limit(1);
+    const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
     if (!user.length) return null;
 
-    const userMemberships = await this.db
+    const userMemberships = await db
       .select({
         groupId: memberships.groupId,
         groupName: groups.name,
@@ -1482,7 +1463,7 @@ export class DatabaseStorage implements IStorage {
    * @returns {Promise<object>} Updated user information
    */
   async updateAdminUser(userId: string, updateData: any) {
-    const [updatedUser] = await this.db
+    const [updatedUser] = await db
       .update(users)
       .set({
         ...updateData,
@@ -1503,10 +1484,10 @@ export class DatabaseStorage implements IStorage {
    */
   async deleteAdminUser(userId: string) {
     // Remove from all groups
-    await this.db.delete(memberships).where(eq(memberships.userId, userId));
+    await db.delete(memberships).where(eq(memberships.userId, userId));
     
     // Soft delete user
-    await this.db
+    await db
       .update(users)
       .set({ 
         email: sql`${users.email} || '_deleted_' || extract(epoch from now())`,
@@ -1527,7 +1508,7 @@ export class DatabaseStorage implements IStorage {
   async getAdminGroups(page: number, limit: number, search: string) {
     const offset = (page - 1) * limit;
     
-    let query = this.db
+    let query = db
       .select({
         id: groups.id,
         name: groups.name,
@@ -1551,7 +1532,7 @@ export class DatabaseStorage implements IStorage {
         .orderBy(desc(groups.createdAt))
         .limit(limit)
         .offset(offset),
-      this.db.select({ count: sql`count(*)` }).from(groups)
+      db.select({ count: sql`count(*)` }).from(groups)
     ]);
 
     return {
@@ -1573,10 +1554,10 @@ export class DatabaseStorage implements IStorage {
    * @returns {Promise<object>} Detailed group information
    */
   async getAdminGroupDetails(groupId: string) {
-    const group = await this.db.select().from(groups).where(eq(groups.id, groupId)).limit(1);
+    const group = await db.select().from(groups).where(eq(groups.id, groupId)).limit(1);
     if (!group.length) return null;
 
-    const members = await this.db
+    const members = await db
       .select({
         userId: users.id,
         firstName: users.firstName,
@@ -1604,7 +1585,7 @@ export class DatabaseStorage implements IStorage {
    * @returns {Promise<object>} Updated group information
    */
   async updateAdminGroup(groupId: string, updateData: any) {
-    const [updatedGroup] = await this.db
+    const [updatedGroup] = await db
       .update(groups)
       .set({
         ...updateData,
@@ -1625,16 +1606,16 @@ export class DatabaseStorage implements IStorage {
    */
   async deleteAdminGroup(groupId: string) {
     // Delete all memberships
-    await this.db.delete(memberships).where(eq(memberships.groupId, groupId));
+    await db.delete(memberships).where(eq(memberships.groupId, groupId));
     
     // Delete all meetings
-    await this.db.delete(meetings).where(eq(meetings.groupId, groupId));
+    await db.delete(meetings).where(eq(meetings.groupId, groupId));
     
     // Delete all prayer requests
-    await this.db.delete(prayerRequests).where(eq(prayerRequests.groupId, groupId));
+    await db.delete(prayerRequests).where(eq(prayerRequests.groupId, groupId));
     
     // Delete the group
-    await this.db.delete(groups).where(eq(groups.id, groupId));
+    await db.delete(groups).where(eq(groups.id, groupId));
   }
 
   /**
@@ -1649,7 +1630,7 @@ export class DatabaseStorage implements IStorage {
   async getAdminMeetings(page: number, limit: number, search: string) {
     const offset = (page - 1) * limit;
     
-    let query = this.db
+    let query = db
       .select({
         id: meetings.id,
         title: meetings.title,
@@ -1672,7 +1653,7 @@ export class DatabaseStorage implements IStorage {
 
     const [results, [totalCount]] = await Promise.all([
       query.orderBy(desc(meetings.createdAt)).limit(limit).offset(offset),
-      this.db.select({ count: sql`count(*)` }).from(meetings)
+      db.select({ count: sql`count(*)` }).from(meetings)
     ]);
 
     return {
@@ -1694,7 +1675,7 @@ export class DatabaseStorage implements IStorage {
    * @returns {Promise<object>} Detailed meeting information
    */
   async getAdminMeetingDetails(meetingId: string) {
-    const meeting = await this.db
+    const meeting = await db
       .select({
         id: meetings.id,
         title: meetings.title,
@@ -1712,7 +1693,7 @@ export class DatabaseStorage implements IStorage {
       
     if (!meeting.length) return null;
 
-    const rsvps = await this.db
+    const rsvps = await db
       .select({
         userId: users.id,
         firstName: users.firstName,
@@ -1741,10 +1722,10 @@ export class DatabaseStorage implements IStorage {
    */
   async deleteAdminMeeting(meetingId: string) {
     // Delete all RSVPs
-    await this.db.delete(meetingRsvps).where(eq(meetingRsvps.meetingId, meetingId));
+    await db.delete(meetingRsvps).where(eq(meetingRsvps.meetingId, meetingId));
     
     // Delete the meeting
-    await this.db.delete(meetings).where(eq(meetings.id, meetingId));
+    await db.delete(meetings).where(eq(meetings.id, meetingId));
   }
 
   /**
@@ -1759,7 +1740,7 @@ export class DatabaseStorage implements IStorage {
   async getAdminPrayers(page: number, limit: number, search: string) {
     const offset = (page - 1) * limit;
     
-    let query = this.db
+    let query = db
       .select({
         id: prayerRequests.id,
         title: prayerRequests.title,
@@ -1785,7 +1766,7 @@ export class DatabaseStorage implements IStorage {
 
     const [results, [totalCount]] = await Promise.all([
       query.orderBy(desc(prayerRequests.createdAt)).limit(limit).offset(offset),
-      this.db.select({ count: sql`count(*)` }).from(prayerRequests)
+      db.select({ count: sql`count(*)` }).from(prayerRequests)
     ]);
 
     return {
@@ -1807,7 +1788,7 @@ export class DatabaseStorage implements IStorage {
    * @returns {Promise<object>} Detailed prayer information
    */
   async getAdminPrayerDetails(prayerId: string) {
-    const prayer = await this.db
+    const prayer = await db
       .select({
         id: prayerRequests.id,
         title: prayerRequests.title,
@@ -1829,7 +1810,7 @@ export class DatabaseStorage implements IStorage {
       
     if (!prayer.length) return null;
 
-    const responses = await this.db
+    const responses = await db
       .select({
         id: prayerResponses.id,
         message: prayerResponses.message,
@@ -1858,10 +1839,10 @@ export class DatabaseStorage implements IStorage {
    */
   async deleteAdminPrayer(prayerId: string) {
     // Delete all responses
-    await this.db.delete(prayerResponses).where(eq(prayerResponses.prayerRequestId, prayerId));
+    await db.delete(prayerResponses).where(eq(prayerResponses.prayerRequestId, prayerId));
     
     // Delete the prayer request
-    await this.db.delete(prayerRequests).where(eq(prayerRequests.id, prayerId));
+    await db.delete(prayerRequests).where(eq(prayerRequests.id, prayerId));
   }
 
   /**
@@ -1876,7 +1857,7 @@ export class DatabaseStorage implements IStorage {
   async getAdminChats(page: number, limit: number, groupId: string) {
     const offset = (page - 1) * limit;
     
-    let query = this.db
+    let query = db
       .select({
         id: sql`'chat_' || generate_random_uuid()`, // Placeholder since we don't have a chat table yet
         message: sql`'Sample chat message'`,
@@ -1952,7 +1933,7 @@ export class DatabaseStorage implements IStorage {
    * @returns {Promise<object>} System health information
    */
   async getSystemHealth() {
-    const dbTest = await this.db.select({ test: sql`1` }).limit(1);
+    const dbTest = await db.select({ test: sql`1` }).limit(1);
     
     return {
       status: 'healthy',

@@ -34,15 +34,12 @@ export const requireAdmin: RequestHandler = async (req: any, res, next) => {
     
     // Check if user email matches admin email
     if (userEmail !== ADMIN_EMAIL) {
-      console.log(`🚫 Admin access denied for: ${userEmail}`);
-      return res.status(403).json({ 
-        message: "Forbidden - admin privileges required",
-        userEmail: userEmail,
-        requiredEmail: ADMIN_EMAIL 
-      });
-    }
-
-    console.log(`✅ Admin access granted to: ${userEmail}`);
+            return res.status(403).json({ 
+              message: "Forbidden - admin privileges required",
+              userEmail: userEmail,
+              requiredEmail: ADMIN_EMAIL 
+            });
+          }
     next();
   } catch (error) {
     console.error("Admin authentication error:", error);

@@ -55,18 +55,10 @@ export default function AdminDashboard() {
   // Check if user is admin
   const isAdmin = user?.email === "garygasson@gmail.com";
 
-  // Debug logging
-  console.log('🔍 Admin Dashboard Debug:', { 
-    user: user?.email, 
-    isAdmin, 
-    isLoading,
-    userObject: user 
-  });
 
   useEffect(() => {
     // Only show access denied if we're not loading and user is definitely not admin
     if (!isLoading && user && !isAdmin) {
-      console.log('❌ Access denied for user:', user.email);
       toast({
         title: "Access Denied",
         description: "You don't have admin privileges",
@@ -79,9 +71,7 @@ export default function AdminDashboard() {
   const { data: dashboardStats, isLoading: isLoadingStats, error: statsError } = useQuery<AdminDashboardStats>({
     queryKey: ["/api/admin/dashboard"],
     queryFn: async () => {
-      console.log('🔍 Making admin dashboard API call...');
       const token = await getToken();
-      console.log('🔍 Got token for admin API call:', token ? 'Token present' : 'No token');
       
       const response = await fetch('/api/admin/dashboard', {
         headers: {
@@ -89,27 +79,18 @@ export default function AdminDashboard() {
           'Content-Type': 'application/json'
         }
       });
-      console.log('🔍 Admin dashboard API response status:', response.status);
+      
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('🔍 Admin dashboard API error:', errorText);
         throw new Error(`API Error: ${response.status} - ${errorText}`);
       }
-      const data = await response.json();
-      console.log('🔍 Admin dashboard API response data:', data);
-      return data;
+      
+      return response.json();
     },
     enabled: isAdmin,
     retry: 1,
   });
 
-  // Debug logging for dashboard stats
-  console.log('🔍 Admin Dashboard Stats Debug:', {
-    isLoadingStats,
-    dashboardStats,
-    statsError,
-    isAdmin
-  });
 
   // Show loading while auth is being checked
   if (isLoading) {
@@ -205,42 +186,6 @@ export default function AdminDashboard() {
 
           {/* Dashboard Overview */}
           <TabsContent value="dashboard" className="space-y-6">
-            {/* Debug Test Button */}
-            <div className="mb-4">
-              <Button 
-                onClick={async () => {
-                  console.log('🧪 Manual API Test Starting...');
-                  try {
-                    const token = await getToken();
-                    console.log('🧪 Token:', token ? 'Present' : 'Missing');
-                    
-                    const response = await fetch('/api/admin/dashboard', {
-                      headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                      }
-                    });
-                    
-                    console.log('🧪 Response Status:', response.status);
-                    console.log('🧪 Response Headers:', Object.fromEntries(response.headers.entries()));
-                    
-                    if (!response.ok) {
-                      const errorText = await response.text();
-                      console.error('🧪 Error Response:', errorText);
-                    } else {
-                      const data = await response.json();
-                      console.log('🧪 Success Response:', data);
-                    }
-                  } catch (error) {
-                    console.error('🧪 Test Error:', error);
-                  }
-                }}
-                variant="outline"
-                size="sm"
-              >
-                🧪 Test API Call
-              </Button>
-            </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <StatCard
@@ -303,14 +248,16 @@ export default function AdminDashboard() {
                 <CardContent>
                   <div className="space-y-2">
                     {dashboardStats?.recent.groups.map((group) => (
-                      <div key={group.id} className="flex items-center justify-between p-2 border rounded">
-                        <div>
+                      <div key={group.id} className="p-2 border rounded">
+                        <div className="flex items-start justify-between mb-2">
                           <p className="font-medium text-sm">{group.name}</p>
-                          <p className="text-xs text-muted-foreground truncate">{group.description}</p>
+                          <Badge variant="outline" className="text-xs">
+                            {new Date(group.createdAt).toLocaleDateString()}
+                          </Badge>
                         </div>
-                        <Badge variant="outline" className="text-xs">
-                          {new Date(group.createdAt).toLocaleDateString()}
-                        </Badge>
+                        <p className="text-xs text-muted-foreground break-words leading-relaxed">
+                          {group.description}
+                        </p>
                       </div>
                     ))}
                   </div>
