@@ -26,10 +26,10 @@ export default function DailyVerse() {
             <BookOpen className="w-5 h-5 text-primary flex-shrink-0" />
             <div className="flex-1">
               <blockquote className="italic text-gray-700 dark:text-gray-300 mb-2" data-testid="text-daily-verse">
-                "For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life."
+                "For God so loved the world that he gave his one and only Son, that whoever believes in him shall not perish but have eternal life."
               </blockquote>
               <p className="text-sm font-semibold text-primary" data-testid="text-verse-reference">
-                John 3:16 (KJV)
+                John 3:16 (NIV)
               </p>
             </div>
           </div>

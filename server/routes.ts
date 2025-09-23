@@ -60,23 +60,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Verse reference required" });
       }
 
-      // Try KJV translation first via bible-api.com
+      // Try NIV translation first via bible-api.com
       try {
-        const response = await fetch(`https://bible-api.com/${verseRef}?translation=kjv`);
+        const response = await fetch(`https://bible-api.com/${verseRef}?translation=niv`);
         if (response.ok) {
           const data = await response.json();
           return res.json({
             reference: data.reference,
             text: data.text.replace(/\s+/g, ' ').trim(),
-            translation_id: data.translation_id || 'kjv',
-            translation_name: data.translation_name || 'King James Version'
+            translation_id: data.translation_id || 'niv',
+            translation_name: data.translation_name || 'New International Version'
           });
         }
-      } catch (kjvError) {
-        console.error("KJV Bible API error:", kjvError);
+      } catch (nivError) {
+        console.error("NIV Bible API error:", nivError);
       }
 
-      // Fallback to ESV API if KJV fails and API key is available
+      // Fallback to ESV API if NIV fails and API key is available
       const esvApiKey = process.env.ESV_API_KEY;
       
       if (esvApiKey) {
@@ -103,12 +103,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Final fallback verse if all APIs fail (using KJV text)
+      // Final fallback verse if all APIs fail (using NIV text)
       res.json({
         reference: "John 3:16",
-        text: "For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life.",
-        translation_id: "kjv",
-        translation_name: "King James Version"
+        text: "For God so loved the world that he gave his one and only Son, that whoever believes in him shall not perish but have eternal life.",
+        translation_id: "niv",
+        translation_name: "New International Version"
       });
     } catch (error) {
       console.error("Error fetching daily verse:", error);
