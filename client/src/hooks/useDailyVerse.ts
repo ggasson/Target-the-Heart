@@ -56,16 +56,16 @@ export function useDailyVerse() {
   });
 
   const { data, isLoading, error } = useQuery<BibleVerse>({
-    queryKey: ["daily-bible-verse", todaysVerseRef, "niv-2024"], // Added cache buster for NIV update
+    queryKey: ["daily-bible-verse", todaysVerseRef, "niv-2024"], // Keep cache buster for NIV
     queryFn: async () => {
-      const response = await fetch(`/api/daily-verse?q=${encodeURIComponent(todaysVerseRef)}&v=${Date.now()}`);
+      const response = await fetch(`/api/daily-verse?q=${encodeURIComponent(todaysVerseRef)}`);
       if (!response.ok) {
         throw new Error('Failed to fetch verse');
       }
       return response.json();
     },
-    staleTime: 0, // Force fresh fetch for now
-    gcTime: 1000 * 60 * 5, // 5 minutes cache for testing
+    staleTime: 1000 * 60 * 60 * 12, // 12 hours - refresh twice daily
+    gcTime: 1000 * 60 * 60 * 24, // 24 hours - keep in cache for a full day
     retry: 1, // Only retry once on failure
   });
 
