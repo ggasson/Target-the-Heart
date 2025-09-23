@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { apiRequest } from "@/lib/queryClient";
 import type { Group } from "@shared/schema";
 
 interface GroupsMapProps {
@@ -26,6 +27,7 @@ function GroupsMapContent({ onGroupSelect, selectedGroupId }: GroupsMapProps) {
   const [mapCenter, setMapCenter] = useState({ lat: 39.8283, lng: -98.5795 }); // Center of US
   const [mapZoom, setMapZoom] = useState(4);
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
+  const [hasAttemptedLocation, setHasAttemptedLocation] = useState(false);
 
   // Fetch all public groups with location data
   const { data: groups = [] } = useQuery<Group[]>({
@@ -38,7 +40,7 @@ function GroupsMapContent({ onGroupSelect, selectedGroupId }: GroupsMapProps) {
     Number(group.latitude) !== 0 && Number(group.longitude) !== 0
   );
 
-  // Load user location from profile
+  // Load user location from profile or automatically get current location
   useEffect(() => {
     if ((user as any)?.latitude && (user as any)?.longitude) {
       const location = {
@@ -51,11 +53,16 @@ function GroupsMapContent({ onGroupSelect, selectedGroupId }: GroupsMapProps) {
         lng: location.longitude,
       });
       setMapZoom(10);
+      setHasAttemptedLocation(true);
+    } else if (!hasAttemptedLocation && !isGettingLocation) {
+      // Automatically get current location when map loads for the first time
+      getCurrentLocation();
     }
-  }, [user]);
+  }, [user, hasAttemptedLocation, isGettingLocation]);
 
   const getCurrentLocation = () => {
     setIsGettingLocation(true);
+    setHasAttemptedLocation(true); // Mark that we've attempted to get location
     
     // Check HTTPS requirement
     if (window.location.protocol === 'http:' && window.location.hostname !== 'localhost') {
@@ -102,6 +109,15 @@ function GroupsMapContent({ onGroupSelect, selectedGroupId }: GroupsMapProps) {
           lng: location.longitude,
         });
         setMapZoom(12);
+        
+        // Save location to user profile
+        apiRequest("POST", "/api/auth/location", {
+          latitude: location.latitude,
+          longitude: location.longitude,
+          location: `${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}`
+        }).catch(error => {
+          console.error("Failed to save location:", error);
+        });
         
         toast({
           title: "Location Found",
